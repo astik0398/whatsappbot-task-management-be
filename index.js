@@ -24,6 +24,7 @@ app.use(bodyParser.json());
 
 let userSessions = {}; 
 let allData = [];
+let assignerMap = []; // Store assigner's phone numbers separately
 
 async function main() {
   allData = await getAllTasks();
@@ -38,7 +39,7 @@ function makeTwilioRequest() {
     const userMessage = Body.trim().toLowerCase();
 
     if (!userSessions[From]) {
-        userSessions[From] = { step: 0, task: "", assignee: "", dueDate: "", dueTime: "" };
+        userSessions[From] = { step: 0, task: "", assignee: "", dueDate: "", dueTime: "", assignerNumber:From };
     }
 
     let session = userSessions[From];
@@ -46,6 +47,7 @@ function makeTwilioRequest() {
     if (userMessage === "hi") {
         session.step = 1;
         sendMessage(From, "What is the task?");
+        assignerMap.push(From)
     } 
     else if (session.step === 1) {
         session.task = Body.trim();
@@ -73,6 +75,8 @@ function makeTwilioRequest() {
         session.dueTime = Body.trim();
         const assignedPerson = allData.find((person) => person.name.toLowerCase() === session.assignee.toLowerCase());
 
+        console.log('step 4--->',assignerMap);
+        
         if (assignedPerson) {
             let dueDateTime = `${session.dueDate} ${session.dueTime}`;
             assignedPerson.tasks = session.task;
@@ -96,6 +100,8 @@ function makeTwilioRequest() {
     } 
 
     else if (session.step === 5) {
+        console.log('step 5--->',assignerMap);
+
         const assignedPerson = allData.find((person) => `whatsapp:+${person.phone}` === From);
         if (!assignedPerson) return res.sendStatus(200);
 
@@ -106,6 +112,9 @@ function makeTwilioRequest() {
                 .eq("name", assignedPerson.name);
 
             sendMessage(From, "Thank you! The task has been marked as completed.");
+
+            sendMessage(assignerMap[0], `The task "${session.task}" assigned to ${assignedPerson.name} was completed.`);
+
             delete userSessions[From];
         } 
         else if (userMessage === "no") {
@@ -116,10 +125,13 @@ function makeTwilioRequest() {
 
     else if (session.step === 6) {
         const assignedPerson = allData.find((person) => `whatsapp:+${person.phone}` === From);
+
         if (!assignedPerson) return res.sendStatus(200);
 
-        sendMessage(From, `The task "${session.task}" was not completed. Reason: ${Body.trim()}`);
+        sendMessage(assignerMap[0], `The task "${session.task}" assigned to ${assignedPerson.name} was not completed. Reason: ${Body.trim()}`);
 
+        console.log(`No, ${Body.trim()}`);
+        
         await supabase
             .from("tasks")
             .update({ task_done: `No, ${Body.trim()}` })
@@ -150,6 +162,8 @@ cron.schedule("* * * * *", async () => {
   const now = new Date();
   const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000).toISOString().slice(0, 16);
 
+  console.log("Checking for tasks due within 10 minutes", tenMinutesLater);
+
   const { data: tasks, error } = await supabase
       .from("tasks")
       .select("*")
@@ -158,23 +172,26 @@ cron.schedule("* * * * *", async () => {
       .neq("task_done", "Reminder sent") 
       .not("tasks", "is", null)
       .neq("tasks", "")
-      .lte("due_date", tenMinutesLater);
+    //   .lte("due_date", tenMinutesLater);
 
   if (error) {
       console.error("Error fetching reminders:", error);
       return;
   }
 
+  console.log(`Found ${tasks.length} tasks to remind`);
+
   for (const task of tasks) {
+    console.log("Sending reminder to:", task.phone);
       sendMessage(
           `whatsapp:+${task.phone}`,
           `Reminder: Has the task "${task.tasks}" assigned to you been completed yet? Reply with Yes or No.`
       );
 
-      await supabase
-          .from("tasks")
-          .update({ task_done: "Reminder sent" })
-          .eq("id", task.id);
+    //   await supabase
+    //       .from("tasks")
+    //       .update({ task_done: "Reminder sent" })
+    //       .eq("id", task.id);
 
       userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks };
   }
