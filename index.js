@@ -23,7 +23,6 @@ const client = new twilio(
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-const cors = require("cors");
 app.use(cors());
 
 let userSessions = {}; 
