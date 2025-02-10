@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const twilio = require("twilio");
 const supabase = require("./supabaseClient");
 const cron = require("node-cron");
+const cors = require('cors')
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -21,6 +22,9 @@ const client = new twilio(
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+const cors = require("cors");
+app.use(cors());
 
 let userSessions = {}; 
 let allData = [];
