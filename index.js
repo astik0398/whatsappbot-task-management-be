@@ -156,44 +156,92 @@ function sendMessage(to, message) {
     .catch((err) => console.error("Error sending message:", err));
 }
 
-cron.schedule("* * * * *", async () => {
-  console.log("Checking for pending reminders...");
+let cronJob = null; // Store the cron job instance
 
-  const now = new Date();
-  const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000).toISOString().slice(0, 16);
+// Function to start the cron job
+function startCronJob() {
+  if (!cronJob) {
+    cronJob = cron.schedule("* * * * *", async () => {
+      console.log("Checking for pending reminders...");
 
-  console.log("Checking for tasks due within 10 minutes", tenMinutesLater);
+      const now = new Date();
+      const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000).toISOString().slice(0, 16);
 
-  const { data: tasks, error } = await supabase
-      .from("tasks")
-      .select("*")
-      .neq("task_done", "Yes")
-      .neq("task_done", "No")
-      .neq("task_done", "Reminder sent") 
-      .not("tasks", "is", null)
-      .neq("tasks", "")
-    //   .lte("due_date", tenMinutesLater);
+      const { data: tasks, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .neq("task_done", "Yes")
+        .neq("task_done", "No")
+        .neq("task_done", "Reminder sent")
+        .not("tasks", "is", null)
+        .neq("tasks", "");
 
-  if (error) {
-      console.error("Error fetching reminders:", error);
-      return;
-  }
+      if (error) {
+        console.error("Error fetching reminders:", error);
+        return;
+      }
 
-  console.log(`Found ${tasks.length} tasks to remind`);
+      console.log(`Found ${tasks.length} tasks to remind`);
 
-  for (const task of tasks) {
-    console.log("Sending reminder to:", task.phone);
-      sendMessage(
+      for (const task of tasks) {
+        console.log("Sending reminder to:", task.phone);
+        sendMessage(
           `whatsapp:+${task.phone}`,
           `Reminder: Has the task "${task.tasks}" assigned to you been completed yet? Reply with Yes or No.`
-      );
+        );
 
-    //   await supabase
-    //       .from("tasks")
-    //       .update({ task_done: "Reminder sent" })
-    //       .eq("id", task.id);
+        userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks };
+      }
+    });
 
-      userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks };
+    console.log("Cron job started!");
+  }
+}
+
+// Function to stop the cron job
+function stopCronJob() {
+  if (cronJob) {
+    cronJob.stop();
+    cronJob = null;
+    console.log("Cron job stopped!");
+  }
+}
+
+// API to toggle reminders
+app.post("/update-reminder", async (req, res) => {
+  const { id, reminder } = req.body;
+
+  try {
+    // Update the reminder status in Supabase
+    const { error } = await supabase.from("tasks").update({ reminder }).eq("id", id);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log(`Reminder updated for task ID: ${id}`);
+
+    // Check if at least one task has reminder: true
+    const { data: activeReminders, error: fetchError } = await supabase
+      .from("tasks")
+      .select("id")
+      .eq("reminder", true);
+
+    if (fetchError) {
+      console.error("Error checking active reminders:", fetchError);
+      return res.status(500).json({ error: fetchError.message });
+    }
+
+    if (activeReminders.length > 0) {
+      startCronJob(); // Start cron job if any reminder is ON
+    } else {
+      stopCronJob(); // Stop cron job if no reminders are active
+    }
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Error updating reminder:", err);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
