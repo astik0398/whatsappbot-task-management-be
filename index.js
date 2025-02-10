@@ -83,7 +83,7 @@ function makeTwilioRequest() {
 
             await supabase
                 .from("tasks")
-                .update({ tasks: session.task, due_date: dueDateTime, task_done: "Pending" })
+                .update({ tasks: session.task, due_date: dueDateTime, task_done: "Pending", reminder: false })
                 .eq("name", assignedPerson.name);
 
             sendMessage(From, `Task assigned to ${assignedPerson.name}: "${session.task}" with a due date of ${dueDateTime}`);
