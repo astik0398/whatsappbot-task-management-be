@@ -4,9 +4,12 @@ const bodyParser = require("body-parser");
 const twilio = require("twilio");
 const supabase = require("./supabaseClient");
 const cron = require("node-cron");
+const cors = require("cors");
 
 const app = express();
 const port = process.env.PORT || 8000;
+
+app.use(cors());
 
 async function getAllTasks() {
   const { data, error } = await supabase.from("tasks").select("*");
