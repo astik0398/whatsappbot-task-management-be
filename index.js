@@ -108,7 +108,7 @@ function makeTwilioRequest() {
         if (userMessage === "yes") {
             await supabase
                 .from("tasks")
-                .update({ task_done: "Yes" })
+                .update({ task_done: "Yes", reminder: false })
                 .eq("name", assignedPerson.name);
 
             sendMessage(From, "Thank you! The task has been marked as completed.");
