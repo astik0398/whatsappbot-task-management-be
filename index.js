@@ -166,7 +166,7 @@ app.post('/update-reminder', async (req, res) => {
 
   console.log(`Starting reminder cron job for Task ID: ${id}`);
 
-  cron.schedule("*/10 * * * *", async () => {  // Run every 10 mins instead of 1 min
+  cron.schedule("* * * * *", async () => {  // Run every 10 mins instead of 1 min
     console.log("Checking for pending reminders...");
 
     const now = new Date();
