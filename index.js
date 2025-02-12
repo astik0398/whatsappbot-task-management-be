@@ -78,7 +78,9 @@ function makeTwilioRequest() {
         session.dueTime = Body.trim();
         const assignedPerson = allData.find((person) => person.name.toLowerCase() === session.assignee.toLowerCase());
 
-        console.log('step 4--->',assignerMap);
+        console.log('assignedPerson--->',assignedPerson);
+        console.log('allData--->',allData);
+
         
         if (assignedPerson) {
             let dueDateTime = `${session.dueDate} ${session.dueTime}`;
