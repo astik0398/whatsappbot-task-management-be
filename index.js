@@ -171,12 +171,16 @@ app.post('/update-reminder', async()=> {
     const { data: tasks, error } = await supabase
         .from("tasks")
         .select("*")
+        .eq("reminder", true)
         .neq("task_done", "Yes")
         .neq("task_done", "No")
         .neq("task_done", "Reminder sent") 
         .not("tasks", "is", null)
         .neq("tasks", "")
       //   .lte("due_date", tenMinutesLater);
+
+      console.log('tasks-->', tasks);
+      
 
     if (error) {
         console.error("Error fetching reminders:", error);
