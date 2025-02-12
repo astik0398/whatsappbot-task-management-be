@@ -161,52 +161,59 @@ function sendMessage(to, message) {
     .catch((err) => console.error("Error sending message:", err));
 }
 
-app.post('/update-reminder', async()=> {
-  cron.schedule("* * * * *", async () => {
-    console.log("Checking for pending reminders...");
+let isCronRunning = false; // Track if the cron job is active
 
-    const now = new Date();
-    const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000).toISOString().slice(0, 16);
-
-    console.log("Checking for tasks due within 10 minutes", tenMinutesLater);
-
-    const { data: tasks, error } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("reminder", true)
-        .neq("task_done", "Yes")
-        .neq("task_done", "No")
-        .neq("task_done", "Reminder sent") 
-        .not("tasks", "is", null)
-        .neq("tasks", "")
-      //   .lte("due_date", tenMinutesLater);
-
-      console.log('tasks-->', tasks);
-      
-
-    if (error) {
-        console.error("Error fetching reminders:", error);
-        return;
+app.post('/update-reminder', async (req, res) => {
+    if (isCronRunning) {
+        console.log("Cron job already running. Ignoring duplicate trigger.");
+        return res.status(200).json({ message: "Reminder already scheduled" });
     }
 
-    console.log(`Found ${tasks.length} tasks to remind`);
+    isCronRunning = true; // Mark cron job as running
 
-    for (const task of tasks) {
-      console.log("Sending reminder to:", task.phone);
-        sendMessage(
-            `whatsapp:+${task.phone}`,
-            `Reminder: Has the task "${task.tasks}" assigned to you been completed yet? Reply with Yes or No.`
-        );
+    cron.schedule("* * * * *", async () => {
+        console.log("Checking for pending reminders...");
 
-      //   await supabase
-      //       .from("tasks")
-      //       .update({ task_done: "Reminder sent" })
-      //       .eq("id", task.id);
+        const now = new Date();
+        const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000).toISOString().slice(0, 16);
 
-        userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks };
-    }
-  });
-})
+        const { data: tasks, error } = await supabase
+            .from("tasks")
+            .select("*")
+            .eq("reminder", true)
+            .neq("task_done", "Yes")
+            .neq("task_done", "No")
+            .neq("task_done", "Reminder sent") 
+            .not("tasks", "is", null)
+            .neq("tasks", "");
+
+        if (error) {
+            console.error("Error fetching reminders:", error);
+            return;
+        }
+
+        console.log(`Found ${tasks.length} tasks to remind`);
+
+        for (const task of tasks) {
+            console.log("Sending reminder to:", task.phone);
+            sendMessage(
+                `whatsapp:+${task.phone}`,
+                `Reminder: Has the task "${task.tasks}" assigned to you been completed yet? Reply with Yes or No.`
+            );
+
+            userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks };
+
+            // Optional: Mark the task as "Reminder sent" to avoid resending it
+            // await supabase
+            //     .from("tasks")
+            //     .update({ task_done: "Reminder sent" })
+            //     .eq("id", task.id);
+        }
+    });
+
+    res.status(200).json({ message: "Reminder scheduled" });
+});
+
 
 
 app.listen(port, () => {
