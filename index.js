@@ -36,6 +36,21 @@ async function main() {
 
 main();
 
+app.get("/refresh", async (req, res) => {
+    console.log("Refreshing tasks from Supabase...");
+    
+    const { data, error } = await supabase.from("tasks").select("*");
+    
+    if (error) {
+      console.error("Error refreshing tasks:", error);
+      return res.status(500).json({ message: "Error fetching tasks" });
+    }
+    
+    allData = data;
+    console.log("Tasks updated!");
+    res.status(200).json({ message: "Tasks refreshed successfully", tasks: allData });
+  });  
+
 function makeTwilioRequest() {
   app.post("/whatsapp", async (req, res) => {
     const { Body, From } = req.body;
