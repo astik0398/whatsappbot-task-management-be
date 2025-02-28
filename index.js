@@ -2,182 +2,195 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const twilio = require("twilio");
 const { OpenAI } = require("openai");
+const supabase = require("./supabaseClient");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 8000;
-const supabase = require('./supabaseClient')
 
 const openai = new OpenAI({
-apiKey: process.env.OPENAI_API_KEY,
+apiKey:
+process.env.OPENAI_API_KEY,
 });
-const client = new twilio(process.env.TWILIO_ACCOUNT_SID,
-process.env.TWILIO_AUTH_TOKEN);
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
 
-let allData = []
-let userSessions = {};
+const client = new twilio(process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN);
+  app.use(bodyParser.urlencoded({ extended: false }));
+  app.use(bodyParser.json());
+  let allData = []
+  let userSessions = {};
 
 async function getAllTasks() {
   const { data, error } = await supabase.from("tasks").select("*");
   if (error) throw error;
   console.log('data==>',data);
-  
   return data;
-}
-
-async function main() {
-  allData = await getAllTasks();
-}
-
-main();
-
-app.get("/refresh", async (req, res) => {
-  console.log("Refreshing tasks from Supabase...");
-  
-  const { data, error } = await supabase.from("tasks").select("*");
-  
-  if (error) {
-    console.error("Error refreshing tasks:", error);
-    return res.status(500).json({ message: "Error fetching tasks" });
   }
   
+  async function main() {
+  allData = await getAllTasks();
+  console.log('allData==>',allData);
+  }
+
+  main();
+  
+  app.get("/refresh", async (req, res) => {
+  console.log("Refreshing tasks from Supabase...");
+  const { data, error } = await supabase.from("tasks").select("*");
+  if (error) {
+  console.error("Error refreshing tasks:", error);
+  return res.status(500).json({ message: "Error fetching tasks" });
+  }
   allData = data;
   console.log("Tasks updated!");
-  res.status(200).json({ message: "Tasks refreshed successfully", tasks: allData });
-});
+  res.status(200).json({ message: "Tasks refreshed successfully", tasks:
+  allData });
+  });  
 
-async function extractMeaning(userMessage, context) {
-try {
+async function handleUserInput(userMessage, From) {
+console.log('we are here===> 1');
+const session = userSessions[From];
+const conversationHistory = session.conversationHistory || [];
+conversationHistory.push({ role: "user", content: userMessage });
+console.log('we are here===> 2');
 const prompt = `
-You are a smart AI that extracts specific information from the user's response based on the
-given context.
-Extract the most relevant part only and return it as a JSON response.
-Context: ${context}
-User response: "${userMessage}"
-Respond strictly in JSON format without additional text.
+You are a helpful task manager assistant. Respond with a formal tone and a step-by-step format.
+Your goal is to guide the user through task assignment:
+- Ask for task details (task, assignee, due date, time).
+- Respond to yes/no inputs appropriately.
+- Follow up if any information is incomplete.
+- Keep the respone concise and structured.
 
-Example outputs:
-- If extracting a task: { "task": "finish the homepage design" }
-- If extracting an assignee: { "assignee": "Astik" }
-- If extracting a due date: { "dueDate": "28th Feb" }
-- If extracting a due time: { "dueTime": "8 PM" }
+IMPORTANT: 
+    - Once all details are collected, respond **ONLY** with a JSON object.
+    - Do **not** include any extra text before or after the JSON.
+    - This is only for backend procesing so do **NOT** send this JSON format to user
+    - The JSON format should be:
 
+    {
+      "task": "<task_name>",
+      "assignee": "<assignee_name>",
+      "dueDate": "<YYYY-MM-DD>",
+      "dueTime": "<HH:mm>",
+    }
+
+After having all the details you can send the summary of the response so that user can have a look at it.
 For due dates:
 - If the user provides a day and month (e.g., "28th Feb" or "28 February"), convert it into the current year (e.g., "2025-02-28").
 - If the user provides a full date (e.g., "28th Feb 2025"), return it as is.
-- If no year is provided, assume the current year and return the date in the format YYYY-MM-DD.
+- If no year is provided, assume the current year which is 2025 and return the date in the format YYYY-MM-DD.
 
 For due times:
 - If the user provides a time in "AM/PM" format (e.g., "6 PM" or "6 AM"), convert it into the 24-hour format:
   - "6 AM" becomes "06:00"
   - "6 PM" becomes "18:00"
 - Ensure the output time is always in the 24-hour format (HH:mm).
-`;
 
+Conversation history: ${JSON.stringify(conversationHistory)}
+User input: ${userMessage}
+`;
+console.log('we are here===> 3');
+
+try {
 const response = await openai.chat.completions.create({
 model: "gpt-3.5-turbo",
 messages: [{ role: "system", content: prompt }],
 });
 
-return JSON.parse(response.choices[0].message.content);
+console.log('we are here===> 4');
+const botReply = response.choices[0].message.content;
+session.conversationHistory = conversationHistory;
+console.log('we are here===> 5', botReply);
 
-} catch (error) {
-console.error("Error extracting meaning:", error);
-return null;
-}
-}
+sendMessage(From, botReply);
 
-async function handleUserInput(userMessage, From) {
-if (!userSessions[From]) {
-userSessions[From] = { step: 0, task: "", assignee: "", dueDate: "", dueTime: "" };
-}
-const session = userSessions[From];
-switch (session.step) {
-case 0:
-sendMessage(From, "What is the task?");
-session.step = 1;
-break;
-case 1:
-const taskDetails = await extractMeaning(userMessage, "Extract only the task description.");
-session.task = taskDetails?.task || userMessage;
-sendMessage(From, "Whom is this task assigned to?");
-session.step = 2;
-break;
-case 2:
-const assigneeDetails = await extractMeaning(userMessage, "Extract only the assignee's name.");
-session.assignee = assigneeDetails?.assignee || userMessage;
-sendMessage(From, "What is the due date?");
-session.step = 3;
-break;
-case 3:
-const dueDateDetails = await extractMeaning(userMessage, "Extract only the due date.");
-session.dueDate = dueDateDetails?.dueDate || userMessage;
-sendMessage(From, "By what time do you want this to get done?");
-session.step = 4;
-break;
-case 4:
-const dueTimeDetails = await extractMeaning(userMessage, "Extract only the due time.");
-session.dueTime = dueTimeDetails?.dueTime || userMessage;
-sendMessage(
-From,
-`Task Summary:\n\nTask: ${session.task}\nAssigned To: ${session.assignee}\nDue Date:
-${session.dueDate}\nDue Time: ${session.dueTime}\n\nIs this correct? (yes/no)`
-);
-session.step = 5;
-break;
-case 5:
-if (userMessage.toLowerCase() === "yes") {
-
-  const assignedPerson = allData.find((person) => person.name.toLowerCase() === session.assignee.toLowerCase());
+try {
+  const taskData = JSON.parse(botReply);
+  const assignedPerson = allData.find((person) => person.name.toLowerCase() === taskData.assignee.toLowerCase());
 
   console.log('assignedPerson--->',assignedPerson);
   console.log('allData--->',allData);
+  console.log("taskData" ,taskData);
 
   if(assignedPerson){
-    let dueDateTime = `${session.dueDate} ${session.dueTime}`;
+    let dueDateTime = `${taskData.dueDate} ${taskData.dueTime}`;
+    if (taskData.task && taskData.assignee && taskData.dueDate && taskData.dueTime) {
+      const { data, error } = await supabase.from("tasks").update([{
+          tasks: taskData.task,
+          reminder: false,
+          task_done: 'Pending',
+          due_date: dueDateTime
+      }])
+      .eq('name', taskData.assignee)
+      .single()
 
-    await supabase.from('tasks')
-    .update({tasks: session.task, reminder: false, task_done: 'Pending', due_date: dueDateTime})
-    .eq('name', assignedPerson.name)
+      console.log("Matching Task:", data, error);
 
-    sendMessage(From, `Task assigned to ${assignedPerson.name}: "${session.task}" with a due date of ${dueDateTime}`);
-
-    sendMessage(
-      `whatsapp:+${assignedPerson.phone}`,
-      `Hello ${assignedPerson.name}, a new task has been assigned to you: "${session.task}".\n\nDeadline: ${dueDateTime}`
-  );
-
-  delete userSessions[From];
+      if (error) {
+          console.error("Error inserting task into Supabase:", error);
+      } else {
+          console.log("Task successfully added to Supabase.");
+          sendMessage(From, `Task assigned to ${taskData.assignee}:"${taskData.task}" with a due date of ${dueDateTime}`);
+          sendMessage(`whatsapp:+${assignedPerson.phone}`,`Hello ${taskData.assignee}, a new task has been assigned to you:"${taskData.task}".\n\nDeadline: ${dueDateTime}`);
+          delete userSessions[From];
+          session.conversationHistory = [];
+      }
   }
-
+  }
   else {
     sendMessage(From, "Error: Could not find assignee.");
+    }
+
+} catch (parseError) {
+  console.error("Error parsing task details:", parseError);
 }
 
-} else {
-sendMessage(From, "Let's start over. What is the task?");
-session.step = 1;
-}
-break;
-default:
-sendMessage(From, "I'm not sure what you're trying to do. Let's start over. What is thetask?");
-session.step = 1;
-break;
+} catch (error) {
+console.error("Error processing user input with ChatGPT:", error);
+sendMessage(From, "Sorry, I couldn't process your message right now. Please try again.");
 }
 }
 
 function sendMessage(to, message) {
+console.log("Sending message to:", to);
+console.log("Message:", message);
 client.messages
-.create({ from: process.env.TWILIO_PHONE_NUMBER, to, body: message })
-.then((msg) => console.log("Message sent:", msg.sid))
-.catch((err) => console.error("Error sending message:", err));
+.create({
+from: process.env.TWILIO_PHONE_NUMBER,
+to,
+body: message,
+})
+.then((message) => {
+console.log("Message sent successfully:", message.sid);
+})
+.catch((err) => {
+console.error("Error sending message:", err);
+if (err.code) {
+console.error("Twilio error code:", err.code);
 }
+});
+}
+async function makeTwilioRequest() {
 app.post("/whatsapp", async (req, res) => {
 const { Body, From } = req.body;
-await handleUserInput(Body.trim(), From);
+const userMessage = Body.trim();
+if (!userSessions[From]) {
+userSessions[From] = {
+step: 0,
+task: "",
+assignee: "",
+dueDate: "",
+dueTime: "",
+assignerNumber: From,
+conversationHistory: []
+};
+}
+console.log(userMessage, From);
+await handleUserInput(userMessage, From);
 res.end();
 });
+}
+
 app.listen(port, () => {
 console.log(`Server running on port ${port}`);
+makeTwilioRequest();
 });
