@@ -57,7 +57,7 @@ You are a helpful task manager assistant. Respond with a formal tone and a step-
 Your goal is to guide the user through task assignment:
 - Ask for task details (task, assignee, due date, time).
 - Respond to yes/no inputs appropriately.
-- Follow up if any information is incomplete.
+- Follow up if any information is incomplete for example if a user sends task name, assignee but forgot to send due date and time then they should be asked about that
 - Keep the respone concise and structured.
 
 IMPORTANT: 
@@ -101,7 +101,31 @@ const botReply = response.choices[0].message.content;
 session.conversationHistory = conversationHistory;
 console.log('we are here===> 5', botReply);
 
-sendMessage(From, botReply);
+if (botReply.trim().startsWith("{")) {
+  // Try parsing the botReply to ensure it's valid JSON
+  let taskData;
+  try {
+    taskData = JSON.parse(botReply);
+    const summaryMessage = `
+      Thank you for providing the task details. Let's summarize the task:
+
+      Task: ${taskData.task}
+      Assignee: ${taskData.assignee}
+      Due Date: ${taskData.dueDate}
+      Due Time: ${taskData.dueTime}
+
+    `;
+    // Send the summary message if the response is valid JSON
+    sendMessage(From, summaryMessage);
+  } catch (parseError) {
+    // If parsing fails, send the botReply directly
+    console.error("Error parsing task data from OpenAI response:", parseError);
+    sendMessage(From, botReply);
+  }
+} else {
+  // If botReply doesn't start with `{`, send the whole response
+  sendMessage(From, botReply);
+}
 
 try {
   const taskData = JSON.parse(botReply);
