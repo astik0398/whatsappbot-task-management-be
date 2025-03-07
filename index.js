@@ -4,6 +4,9 @@ const twilio = require("twilio");
 const { OpenAI } = require("openai");
 const supabase = require("./supabaseClient");
 require("dotenv").config();
+const cron = require('node-cron')
+const cors = require('cors')
+
 const app = express();
 const port = process.env.PORT || 8000;
 const openai = new OpenAI({
@@ -15,8 +18,13 @@ const client = new twilio(
 );
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+app.use(cors())
+
 let allData = [];
 let userSessions = {};
+let assignerMap = []
+
 async function getAllTasks() {
   const { data, error } = await supabase.from("tasks").select("*");
   if (error) throw error;
@@ -47,7 +55,59 @@ async function handleUserInput(userMessage, From) {
   const conversationHistory = session.conversationHistory || [];
   conversationHistory.push({ role: "user", content: userMessage });
   console.log("we are here===> 2");
-  const prompt = `
+
+  assignerMap.push(From)
+
+  if (session.step === 5) {
+    if (userMessage.toLowerCase() === 'yes') {
+
+      const task = session.task;
+      const { data, error } = await supabase
+        .from("tasks")
+        .update({ task_done: "Completed" })
+        .eq("tasks", task)
+        .single();
+
+      if (error) {
+        console.error("Error updating task:", error);
+        sendMessage(From, "Sorry, there was an error marking the task as completed.");
+      } else {
+        sendMessage(From, "Thank you! The task has been marked as completed!");
+        sendMessage(assignerMap[0], `The task "${task}" was completed.`);
+      }
+
+      delete userSessions[From];
+
+    } else if (userMessage.toLowerCase() === 'no') {
+
+      sendMessage(From, "Why has the task not been completed? Please provide a reason.");
+      
+      session.step = 6;
+    } else {
+      sendMessage(From, "Please respond with 'Yes' or 'No'.");
+    }
+  } else if (session.step === 6) {
+    const reason = userMessage.trim();
+    const task = session.task;
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ task_done: "Not Completed", reason: reason })
+      .eq("tasks", task)
+      .single();
+
+    if (error) {
+      console.error("Error updating task with reason:", error);
+      sendMessage(From, "Sorry, there was an error saving the reason.");
+    } else {
+      sendMessage(From, "Your response has been sent to the assigner.");
+      sendMessage(assignerMap[0], `The task "${session.task}" was not completed. Reason: ${reason.trim()}`);
+
+    }
+
+    delete userSessions[From];
+  } else{
+    const prompt = `
 You are a helpful task manager assistant. Respond with a formal tone and
 a step-by-step format.
 Your goal is to guide the user through task assignment:
@@ -163,6 +223,9 @@ you:"${taskData.task}".\n\nDeadline: ${dueDateTime}`
     );
   }
 }
+  }
+
+
 function sendMessage(to, message) {
   console.log("Sending message to:", to);
   console.log("Message:", message);
@@ -202,6 +265,95 @@ async function makeTwilioRequest() {
     res.end();
   });
 }
+
+let isCronRunning = false; // Track if the cron job is active
+
+app.post('/update-reminder', async (req, res) => {
+
+  const {reminder_frequency} = req.body
+  
+  console.log('inside be update-reminder req.body', reminder_frequency);
+  
+    if (isCronRunning) {
+        console.log("Cron job already running. Ignoring duplicate trigger.");
+        return res.status(200).json({ message: "Reminder already scheduled" });
+    }
+
+    isCronRunning = true;
+
+    const frequencyPattern = /(\d+)\s*(minute|hour|day)s?/;
+    const match = reminder_frequency.match(frequencyPattern);
+
+    console.log('frequencyPattern, match',frequencyPattern, match);
+    
+  
+  if (!match) {
+    console.log("Invalid reminder frequency format");
+    return res.status(400).json({ message: "Invalid reminder frequency format" });
+  }
+
+  const quantity = parseInt(match[1], 10); // Extract the numeric part
+  const unit = match[2]; // Extract the unit (minute, hour, day)
+
+  console.log('quantity, unit',quantity, unit);
+
+  let cronExpression = "";
+
+  // Construct the cron expression based on the unit
+  if (unit === 'minute') {
+    cronExpression = `*/${quantity} * * * *`; // Every X minutes
+  } else if (unit === 'hour') {
+    cronExpression = `0 */${quantity} * * *`; // Every X hours, at the start of the hour
+  } else if (unit === 'day') {
+    cronExpression = `0 0 */${quantity} * *`; // Every X days, at midnight
+  } else {
+    console.log("Unsupported frequency unit");
+    return res.status(400).json({ message: "Unsupported frequency unit" });
+  }
+
+    cron.schedule(cronExpression, async () => {
+        console.log("Checking for pending reminders...");
+
+        // const now = new Date();
+        // const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000).toISOString().slice(0, 16);
+
+        const { data: tasks, error } = await supabase
+            .from("tasks")
+            .select("*")
+            .eq("reminder", true)
+            .neq("task_done", "Completed")
+            .neq("task_done", "No")
+            .neq("task_done", "Reminder sent") 
+            .not("tasks", "is", null)
+            .neq("tasks", "");
+
+        if (error) {
+            console.error("Error fetching reminders:", error);
+            return;
+        }
+
+        console.log(`Found ${tasks.length} tasks to remind`);
+
+        for (const task of tasks) {
+            console.log("Sending reminder to:", task.phone);
+            sendMessage(
+                `whatsapp:+${task.phone}`,
+                `Reminder: Has the task "${task.tasks}" assigned to you been completed yet? Reply with Yes or No.`
+            );
+
+            userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks };
+
+            // Optional: Mark the task as "Reminder sent" to avoid resending it
+            // await supabase
+            //     .from("tasks")
+            //     .update({ task_done: "Reminder sent" })
+            //     .eq("id", task.id);
+        }
+    });
+
+    res.status(200).json({ message: "Reminder scheduled" });
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();

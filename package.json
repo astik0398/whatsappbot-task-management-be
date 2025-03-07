@@ -16,7 +16,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "node-cron": "^3.0.3",
+    "node-schedule": "^2.1.1",
     "openai": "^4.85.4",
-    "twilio": "^5.4.3"
+    "twilio": "^5.4.5"
   }
 }
