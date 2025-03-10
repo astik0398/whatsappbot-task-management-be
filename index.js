@@ -158,62 +158,78 @@ User input: ${userMessage}
     const botReply = response.choices[0].message.content;
     session.conversationHistory = conversationHistory;
     console.log("we are here===> 5", botReply);
-    sendMessage(From, botReply);
-    try {
-      const taskData = JSON.parse(botReply);
-      const assignedPerson = allData.find(
-        (person) =>
-          person.name.toLowerCase() === taskData.assignee.toLowerCase()
-      );
-      console.log("assignedPerson--->", assignedPerson);
-      console.log("taskData", taskData);
-      if (assignedPerson) {
-        let dueDateTime = `${taskData.dueDate} ${taskData.dueTime}`;
-        if (
-          taskData.task &&
-          taskData.assignee &&
-          taskData.dueDate &&
-          taskData.dueTime
-        ) {
-          const { data, error } = await supabase
-            .from("tasks")
-            .update([
-              {
-                tasks: taskData.task,
-                reminder: false,
-                task_done: "Pending",
-                due_date: dueDateTime,
-                reminder_frequency: taskData.reminder_frequency
-              },
-            ])
-            .eq("name", taskData.assignee)
-            .single();
-          console.log("Matching Task:", data, error);
-          if (error) {
-            console.error("Error inserting task into Supabase:", error);
-          } else {
-            console.log("Task successfully added to Supabase.");
-            sendMessage(
-              From,
-              `Task assigned to
-${taskData.assignee}:"${taskData.task}" with a due date of
-${dueDateTime}`
-            );
-            sendMessage(
-              `whatsapp:+${assignedPerson.phone}`,
-              `Hello
-${taskData.assignee}, a new task has been assigned to
-you:"${taskData.task}".\n\nDeadline: ${dueDateTime}`
-            );
-            delete userSessions[From];
-            session.conversationHistory = [];
+    
+    if(botReply[0]==='{'){
+      const taskDetails = JSON.parse(botReply)
+
+      sendMessage(From, `Thank you for providing the task details. Let's summarize the task:
+
+      Task: ${taskDetails.task}
+      Assignee: ${taskDetails.assignee}
+      Due Date: ${taskDetails.dueDate}
+      Due Time: ${taskDetails.dueTime}
+     Reminder Frequency: ${taskDetails.reminder_frequency}`)
+    }else{
+      sendMessage(From, botReply);
+    }
+    
+    if(botReply[0]==='{'){
+      try {
+        const taskData = JSON.parse(botReply);
+        const assignedPerson = allData.find(
+          (person) =>
+            person.name.toLowerCase() === taskData.assignee.toLowerCase()
+        );
+        console.log("assignedPerson--->", assignedPerson);
+        console.log("taskData", taskData);
+        if (assignedPerson) {
+          let dueDateTime = `${taskData.dueDate} ${taskData.dueTime}`;
+          if (
+            taskData.task &&
+            taskData.assignee &&
+            taskData.dueDate &&
+            taskData.dueTime
+          ) {
+            const { data, error } = await supabase
+              .from("tasks")
+              .update([
+                {
+                  tasks: taskData.task,
+                  reminder: false,
+                  task_done: "Pending",
+                  due_date: dueDateTime,
+                  reminder_frequency: taskData.reminder_frequency
+                },
+              ])
+              .eq("name", taskData.assignee)
+              .single();
+            console.log("Matching Task:", data, error);
+            if (error) {
+              console.error("Error inserting task into Supabase:", error);
+            } else {
+              console.log("Task successfully added to Supabase.");
+              sendMessage(
+                From,
+                `Task assigned to
+  ${taskData.assignee}:"${taskData.task}" with a due date of
+  ${dueDateTime}`
+              );
+              sendMessage(
+                `whatsapp:+${assignedPerson.phone}`,
+                `Hello
+  ${taskData.assignee}, a new task has been assigned to
+  you:"${taskData.task}".\n\nDeadline: ${dueDateTime}`
+              );
+              delete userSessions[From];
+              session.conversationHistory = [];
+            }
           }
+        } else {
+          sendMessage(From, "Error: Could not find assignee.");
         }
-      } else {
-        sendMessage(From, "Error: Could not find assignee.");
+      } catch (parseError) {
+        console.error("Error parsing task details:", parseError);
       }
-    } catch (parseError) {
-      console.error("Error parsing task details:", parseError);
     }
   } catch (error) {
     console.error("Error processing user input with ChatGPT:", error);
