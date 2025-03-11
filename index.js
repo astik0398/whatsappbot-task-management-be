@@ -157,7 +157,7 @@ User input: ${userMessage}
   console.log("we are here===> 3");
   try {
     const response = await openai.chat.completions.create({
-      model: "ft:gpt-3.5-turbo-0125:test::B9p6pquY",
+      model: "gpt-4-turbo",
       messages: [{ role: "system", content: prompt }],
     });
     console.log("we are here===> 4");
