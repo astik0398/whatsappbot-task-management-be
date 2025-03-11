@@ -117,6 +117,12 @@ reminder).
 - Follow up if any information is incomplete.
 - Keep the respone concise and structured.
 - Once you have all the details please **summarize** the entered details
+
+EXAMPLES: 
+
+- If a user is asked about due date, due time and reminder frequncy, and user sends only due date and due time then it should again ask for reminder frequency and should not ignore that.
+- Similarly if a user is asked about task, assignee and due date but user only only task and due date then it should again ask the user asking about the assignee since they did not sent that.
+
 IMPORTANT:
 - Once all details are collected, return **ONLY** with a JSON object
 which will be used for backend purpose.
