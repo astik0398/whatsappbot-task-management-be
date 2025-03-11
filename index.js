@@ -152,10 +152,7 @@ User input: ${userMessage}
   try {
     const response = await openai.chat.completions.create({
       model: "ft:gpt-3.5-turbo-0125:test:task-bot:B9mo0E4N",
-      messages: [
-        {"role": "system", "content": "You are a task manager bot that collects task details from users via WhatsApp."},
-        {"role": "user", "content": "The task is Go through Twilio setup, assigned to Astik, due date 4th Sept 2026 5pm, reminder every 3 minutes."}
-      ]
+      messages: [{ role: "system", content: prompt }],
     });
     console.log("we are here===> 4");
     const botReply = response.choices[0].message.content;
