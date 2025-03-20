@@ -362,6 +362,7 @@ async function makeTwilioRequest() {
 
       console.log('cleanedTranscript=====>',cleanedTranscript);
 
+      userMessage = cleanedTranscript
   }
 
   // Respond with an HTTP 200 status
