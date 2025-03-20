@@ -271,8 +271,8 @@ function sendMessage(to, message) {
 async function downloadMedia(mediaUrl, messageSid) {
   try {
       // Twilio's Account SID and Auth Token
-      const accountSid = 'AC91853af086d6fab38c6e8d539d5f36a9';
-      const authToken = 'e00c6f595c26862fc19f1a8082e8c700';
+      const accountSid = process.env.TWILIO_ACCOUNT_SID_ALTERNATE;
+      const authToken = process.env.TWILIO_AUTH_TOKEN_ALTERNATE;
 
       // Create the authorization header
       const authHeader = 'Basic ' + Buffer.from(accountSid + ':' + authToken).toString('base64');
