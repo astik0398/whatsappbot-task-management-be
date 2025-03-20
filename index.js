@@ -14,10 +14,8 @@ const port = process.env.PORT || 8000;
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const client = new twilio(
-  "AC91853af086d6fab38c6e8d539d5f36a9",
-  "e00c6f595c26862fc19f1a8082e8c700"
-);
+const client = new twilio(process.env.TWILIO_ACCOUNT_SID_ALTERNATE, process.env.TWILIO_AUTH_TOKEN_ALTERNATE);
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
