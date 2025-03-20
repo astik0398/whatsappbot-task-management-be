@@ -326,7 +326,7 @@ async function makeTwilioRequest() {
 
       console.log('audioUrl', audioUrl);
 
-      const apiKey = 'ww-9CTz77OQJ36ebmDirGWUvxSyOMbrai47CiFq3JhAFKEPFpUyOUcdM5';
+      const apiKey = process.env.WORDWARE_API_KEY;
       const requestBody = {
         inputs: {
           voice_over: {
