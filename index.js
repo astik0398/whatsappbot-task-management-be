@@ -5,7 +5,9 @@ const { OpenAI } = require("openai");
 const supabase = require("./supabaseClient");
 require("dotenv").config();
 const cron = require('node-cron')
-const cors = require('cors')
+const cors = require('cors');
+const { default: axios } = require("axios");
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -13,8 +15,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const client = new twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
+  "AC91853af086d6fab38c6e8d539d5f36a9",
+  "e00c6f595c26862fc19f1a8082e8c700"
 );
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -267,10 +269,106 @@ function sendMessage(to, message) {
       }
     });
 }
+
+async function downloadMedia(mediaUrl, messageSid) {
+  try {
+      // Twilio's Account SID and Auth Token
+      const accountSid = 'AC91853af086d6fab38c6e8d539d5f36a9';
+      const authToken = 'e00c6f595c26862fc19f1a8082e8c700';
+
+      // Create the authorization header
+      const authHeader = 'Basic ' + Buffer.from(accountSid + ':' + authToken).toString('base64');
+
+      // Send a GET request to the media URL with Basic Authentication header
+      const mediaResponse = await axios.get(mediaUrl, {
+          responseType: 'arraybuffer',  // Important for downloading binary data
+          headers: {
+              'Authorization': authHeader
+          }
+      });
+
+      const uniqueId = Date.now().toString() + Math.random().toString(36).substring(2, 15);
+      
+      const {data, error} = await supabase.storage.from('voice-messages').upload(uniqueId, mediaResponse.data, {
+        contentType: 'audio/mp3',  // Set the content type (or adjust based on media type)
+        upsert: true,  // Optional: To overwrite existing files with the same name
+    })
+
+    const publicURL = `https://rxmjzmgvxbotzfqhidzd.supabase.co/storage/v1/object/public/${data.fullPath}`
+
+    if (error) {
+      console.error('Error uploading media to Supabase:', error);
+  } else {
+      console.log(`Voice message uploaded to Supabase: ${uniqueId}`);
+      return publicURL
+  }
+
+  } catch (error) {
+      console.error('Error downloading media:', error);
+  }
+}
+
 async function makeTwilioRequest() {
   app.post("/whatsapp", async (req, res) => {
     const { Body, From } = req.body;
-    const userMessage = Body.trim();
+
+    const mediaUrl = req.body.MediaUrl0;
+    const mediaType = req.body.MediaContentType0;
+
+    let userMessage = Body.trim();
+
+    console.log('mediaUrl - mediaType', mediaUrl ,mediaType);
+
+    if (mediaUrl && mediaType && mediaType.startsWith('audio')) {
+      console.log(`Received a voice message from`);
+      console.log(`Media URL: ${mediaUrl}`);
+
+      // Download the voice message
+      const audioUrl = await downloadMedia(mediaUrl, From);
+
+      console.log('audioUrl', audioUrl);
+
+      const apiKey = 'ww-9CTz77OQJ36ebmDirGWUvxSyOMbrai47CiFq3JhAFKEPFpUyOUcdM5';
+      const requestBody = {
+        inputs: {
+          voice_over: {
+            type: 'audio',
+            audio_url: audioUrl, 
+            transcript: "Your transcript here"
+          }
+        },
+        version: '^1.0'
+      };
+
+      const response = await axios.post(
+        'https://app.wordware.ai/api/released-app/d563e981-8c21-4b38-8201-45f319e4aac9/run',
+        requestBody,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json', 
+          },
+        }
+      );
+      console.log('res====?>', response.data);
+      const responseValue = response.data.trim().split('\n');
+
+      let parsedChunks = responseValue.map(chunk => JSON.parse(chunk));
+
+      console.log('parsedChunks length', parsedChunks[parsedChunks.length-1]);
+
+      const cleanText = parsedChunks[parsedChunks.length-1].value.values['Speech-to-text with Deepgram'].output.transcript
+      console.log('actual audio--->', cleanText);
+
+      const cleanedTranscript = cleanText.replace(/^\n?Speaker \d+: /, '').trim();
+
+      console.log('cleanedTranscript=====>',cleanedTranscript);
+
+  }
+
+  // Respond with an HTTP 200 status
+  res.status(200).send('<Response></Response>');
+    
     if (!userSessions[From]) {
       userSessions[From] = {
         step: 0,

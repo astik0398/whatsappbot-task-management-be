@@ -13,7 +13,7 @@
 {"messages":[{"role":"user","content":"The due date is 5th Oct 5pm"},{"role":"assistant","content":"How often should I send reminders?"}]}
 {"messages":[{"role":"user","content":"Remind every 2 hours"},{"role":"assistant","content":"Got it! The task 'download all the songs' is assigned to Neww, due on 5th Oct at 5 PM, with reminders every 2 hours."}]}
 {"messages":[{"role":"user","content":"The task is submit the project report, assigned to Alex"},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
-{"messages":[{"role":"user","content":"It's due on 12th Nov"},{"role":"assistant","con+tent":"What time on 12th Nov is the deadline?"}]}
+{"messages":[{"role":"user","content":"It's due on 12th Nov"},{"role":"assistant","content":"What time on 12th Nov is the deadline?"}]}
 {"messages":[{"role":"user","content":"By 10 AM"},{"role":"assistant","content":"How often should I send reminders?"}]}
 {"messages":[{"role":"user","content":"Remind every day at 9 AM"},{"role":"assistant","content":"Got it! The task 'submit the project report' is assigned to Alex, due on 12th Nov at 10 AM, with reminders every day at 9 AM."}]}
 {"messages":[{"role":"user","content":"The task is call the supplier, assigned to Ramesh, due on 25th Dec at 3 PM"},{"role":"assistant","content":"How often should I send reminders?"}]}
@@ -22,3 +22,79 @@
 {"messages":[{"role":"user","content":"I'll provide that later."},{"role":"assistant","content":"I need all details to schedule the task. What is the due date?"}]}
 {"messages":[{"role":"user","content":"Okay, it's due on 20th Sept at 11 AM"},{"role":"assistant","content":"How often should I send reminders?"}]}
 {"messages":[{"role":"user","content":"Every 6 hours"},{"role":"assistant","content":"Got it! The task 'review the contract' is assigned to Priya, due on 20th Sept at 11 AM, with reminders every 6 hours."}]}
+{"messages":[{"role":"user","content":"Hi"},{"role":"assistant","content":"Hello! How can I help you with your tasks today?"}]}
+{"messages":[{"role":"user","content":"What’s the weather like?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"The task is call the supplier, assigned to Ramesh, due on 25th Dec at 3 PM"},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"How are you?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"The task is review the contract, assigned to Priya"},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Can you remind me of my tasks?"},{"role":"assistant","content":"I’m here only to assign tasks. Please provide the task details to get started."}]}
+{"messages":[{"role":"user","content":"The task is Go through Twilio setup, assigned to Astik, due date 4th Sept 2026, reminder every 3 minutes."},{"role":"assistant","content":"What is the due time for this task?"}]}
+{"messages":[{"role":"user","content":"Hi"},{"role":"assistant","content":"Hello! How can I help you with your tasks today?"}]}
+{"messages":[{"role":"user","content":"What is the full form of MERN stack?"}, {"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Can you tell me a joke?"}, {"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Who won the World Cup in 2022?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What is the capital of Japan?"}, {"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"The task is prepare presentation, assigned to Sarah, due on 15th July at 9 AM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Remind every 30 minutes"},{"role":"assistant","content":"Got it! The task 'prepare presentation' is assigned to Sarah, due on 15th July at 9 AM, with reminders every 30 minutes."}]}
+{"messages":[{"role":"user","content":"The task is update the website, assigned to Bob."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"It's due on 1st Oct at 4 PM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Every 2 hours"},{"role":"assistant","content":"Got it! The task 'update the website' is assigned to Bob, due on 1st Oct at 4 PM, with reminders every 2 hours."}]}
+{"messages":[{"role":"user","content":"The task is check email for important updates, assigned to Mike."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 5th Jan at 10 AM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Every day at 8 AM"},{"role":"assistant","content":"Got it! The task 'check email for important updates' is assigned to Mike, due on 5th Jan at 10 AM, with reminders every day at 8 AM."}]}
+{"messages":[{"role":"user","content":"The task is review project proposal, assigned to Eva, reminder every 1 hour."},{"role":"assistant","content":"What is the due date and due time?"}]}
+{"messages":[{"role":"user","content":"Due date is 22nd May at 3 PM."},{"role":"assistant","content":"Got it! The task 'review project proposal' is assigned to Eva, due on 22nd May at 3 PM, with reminders every 1 hour."}]}
+{"messages":[{"role":"user","content":"The task is send meeting invites, assigned to Liam."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 12th Mar at 11 AM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Every 6 hours"},{"role":"assistant","content":"Got it! The task 'send meeting invites' is assigned to Liam, due on 12th Mar at 11 AM, with reminders every 6 hours."}]}
+{"messages":[{"role":"user","content":"The task is review financial statements, assigned to Tom."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 18th July at 4 PM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Remind every 12 hours"},{"role":"assistant","content":"Got it! The task 'review financial statements' is assigned to Tom, due on 18th July at 4 PM, with reminders every 12 hours."}]}
+{"messages":[{"role":"user","content":"The task is update client on project status, assigned to Linda."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 20th Dec at 2 PM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Every 3 hours"},{"role":"assistant","content":"Got it! The task 'update client on project status' is assigned to Linda, due on 20th Dec at 2 PM, with reminders every 3 hours."}]}
+{"messages":[{"role":"user","content":"The task is finalize budget proposal, assigned to Karen."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 3rd Feb at 6 PM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Remind every 15 minutes"},{"role":"assistant","content":"Got it! The task 'finalize budget proposal' is assigned to Karen, due on 3rd Feb at 6 PM, with reminders every 15 minutes."}]}
+{"messages":[{"role":"user","content":"The task is test the application, assigned to Raj, due on 7th Aug at 1 PM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Remind every 30 minutes"},{"role":"assistant","content":"Got it! The task 'test the application' is assigned to Raj, due on 7th Aug at 1 PM, with reminders every 30 minutes."}]}
+{"messages":[{"role":"user","content":"The task is attend team meeting, assigned to Emily."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"It's due on 9th Nov at 3 PM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Every day at 7 AM"},{"role":"assistant","content":"Got it! The task 'attend team meeting' is assigned to Emily, due on 9th Nov at 3 PM, with reminders every day at 7 AM."}]}
+{"messages":[{"role":"user","content":"The task is finalize proposal document, assigned to George."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 28th Jan at 12 PM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Remind every 2 hours"},{"role":"assistant","content":"Got it! The task 'finalize proposal document' is assigned to George, due on 28th Jan at 12 PM, with reminders every 2 hours."}]}
+{"messages":[{"role":"user","content":"The task is complete code review, assigned to Julia."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 11th Feb at 10 AM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Remind every 5 minutes"},{"role":"assistant","content":"Got it! The task 'complete code review' is assigned to Julia, due on 11th Feb at 10 AM, with reminders every 5 minutes."}]}
+{"messages":[{"role":"user","content":"The task is prepare project demo, assigned to Chloe."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 6th April at 3 PM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Remind every 4 hours"},{"role":"assistant","content":"Got it! The task 'prepare project demo' is assigned to Chloe, due on 6th April at 3 PM, with reminders every 4 hours."}]}
+{"messages":[{"role":"user","content":"The task is complete client feedback survey, assigned to Sam."},{"role":"assistant","content":"What is the due date, due time, and how often to send a reminder?"}]}
+{"messages":[{"role":"user","content":"Due date is 18th Aug at 8 AM."},{"role":"assistant","content":"How often should I send reminders?"}]}
+{"messages":[{"role":"user","content":"Every 12 hours"},{"role":"assistant","content":"Got it! The task 'complete client feedback survey' is assigned to Sam, due on 18th Aug at 8 AM, with reminders every 12 hours."}]}
+{"messages":[{"role":"user","content":"What’s the weather today?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Can you tell me a joke?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Who won the game last night?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What is the capital of Australia?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"How are you doing today?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Can you recommend a movie?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What’s your favorite color?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Tell me about the latest tech trends?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Can you help me with my homework?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Do you know a good restaurant nearby?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What’s the time in New York?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What is the meaning of life?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Can you give me advice on productivity?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Tell me a fun fact!"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What’s your favorite song?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Can you remind me about my appointment?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What’s your opinion on social media?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Do you have any tips for a healthier lifestyle?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"How old are you?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What’s the meaning of your name?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What is the best programming language?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Can you check my email?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Do you know how to play chess?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"Can you give me the recipe for pasta?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
+{"messages":[{"role":"user","content":"What’s the latest news?"},{"role":"assistant","content":"I’m here only to assign tasks. Let me know how I can assist with your tasks."}]}
