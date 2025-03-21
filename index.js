@@ -8,6 +8,7 @@ const cron = require('node-cron')
 const cors = require('cors');
 const { default: axios } = require("axios");
 const fs = require('fs');
+const FormData = require('form-data'); // to handle file upload
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -306,6 +307,42 @@ async function downloadMedia(mediaUrl, messageSid) {
   }
 }
 
+async function transcribeAudioFromUrl(audioUrl) {
+  try {
+
+    const response = await axios.get(audioUrl, {
+      responseType: 'arraybuffer',
+    });
+
+    const form = new FormData();
+    form.append('file', response.data, {
+      filename: 'audio.mp3', 
+      contentType: 'audio/mp3', 
+    });
+
+    form.append('model', 'whisper-1'); 
+
+    const result = await axios.post('https://api.openai.com/v1/audio/transcriptions', form, {
+      headers: {
+        ...form.getHeaders(), 
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+    });
+
+    if (result && result.data) {
+      console.log('Transcription result:', result.data);
+    } else {
+      console.log('No transcription result returned');
+    }
+
+    return result.data;
+
+  } catch (error) {
+    // Log the error details for debugging
+    console.error('Error transcribing audio:', error.response ? error.response.data : error.message);
+  }
+}
+
 async function makeTwilioRequest() {
   app.post("/whatsapp", async (req, res) => {
     const { Body, From } = req.body;
@@ -326,20 +363,30 @@ async function makeTwilioRequest() {
 
       console.log('audioUrl', audioUrl);
 
+      if (audioUrl) {
+        console.log('Audio URL:', audioUrl);
+
+        // Send the audio URL to the transcription function
+        const transcription = await transcribeAudioFromUrl(audioUrl);
+
+        if (transcription) {
+          userMessage = transcription.text; // Use the transcription as the user message
+        }
+
+        console.log('returned transcription--->', transcription);
+        
+      }
+
       const apiKey = process.env.WORDWARE_API_KEY;
       const requestBody = {
-        inputs: {
-          voice_over: {
-            type: 'audio',
-            audio_url: audioUrl, 
-            transcript: "Your transcript here"
-          }
-        },
-        version: '^1.0'
+          inputs: {
+            your_text: userMessage
+          },
+          version: "^2.0"
       };
 
       const response = await axios.post(
-        'https://app.wordware.ai/api/released-app/d563e981-8c21-4b38-8201-45f319e4aac9/run',
+        'https://app.wordware.ai/api/released-app/8ab2f459-fee3-4aa1-9d8b-fc6454a347c3/run',
         requestBody,
         {
           headers: {
@@ -348,21 +395,26 @@ async function makeTwilioRequest() {
           },
         }
       );
+
       console.log('res====?>', response.data);
+
       const responseValue = response.data.trim().split('\n');
 
       let parsedChunks = responseValue.map(chunk => JSON.parse(chunk));
 
-      console.log('parsedChunks length', parsedChunks[parsedChunks.length-1]);
+      console.log('parsedChunks length', parsedChunks[parsedChunks.length-1].value.values.new_generation);
 
-      const cleanText = parsedChunks[parsedChunks.length-1].value.values['Speech-to-text with Deepgram'].output.transcript
-      console.log('actual audio--->', cleanText);
+      const cleanText = parsedChunks[parsedChunks.length-1].value.values.new_generation
+      // console.log('actual audio--->', cleanText);
 
-      const cleanedTranscript = cleanText.replace(/^\n?Speaker \d+: /, '').trim();
+      // const cleanedTranscript = cleanText.replace(/^\n?Speaker \d+: /, '').trim();
 
-      console.log('cleanedTranscript=====>',cleanedTranscript);
+      // console.log('cleanedTranscript=====>',cleanedTranscript);
+      
 
-      userMessage = cleanedTranscript
+      console.log('clean text====>', cleanText);
+      
+      userMessage = cleanText
   }
 
   // Respond with an HTTP 200 status
