@@ -452,7 +452,7 @@ app.post('/update-reminder', async (req, res) => {
 
     isCronRunning = true;
 
-    const frequencyPattern = /(\d+)\s*(minute|hour|day)s?/;
+    const frequencyPattern = /(\d+)\s*(minute|min|mins|hour|hrs|hours|day|days)s?/;
     const match = reminder_frequency.match(frequencyPattern);
 
     console.log('frequencyPattern, match',frequencyPattern, match);
@@ -471,11 +471,11 @@ app.post('/update-reminder', async (req, res) => {
   let cronExpression = "";
 
   // Construct the cron expression based on the unit
-  if (unit === 'minute') {
+  if (unit === 'minute' || unit === 'min' || unit === 'mins') {
     cronExpression = `*/${quantity} * * * *`; // Every X minutes
-  } else if (unit === 'hour') {
+  } else if (unit === 'hour' || unit == 'hours' || unit=== 'hrs') {
     cronExpression = `0 */${quantity} * * *`; // Every X hours, at the start of the hour
-  } else if (unit === 'day') {
+  } else if (unit === 'day' || unit === 'days') {
     cronExpression = `0 0 */${quantity} * *`; // Every X days, at midnight
   } else {
     console.log("Unsupported frequency unit");
