@@ -269,77 +269,53 @@ function sendMessage(to, message) {
     });
 }
 
-async function downloadMedia(mediaUrl, messageSid) {
+async function transcribeAudioDirectly(mediaUrl) {
+  
   try {
+
       // Twilio's Account SID and Auth Token
       const accountSid = process.env.TWILIO_ACCOUNT_SID_ALTERNATE;
       const authToken = process.env.TWILIO_AUTH_TOKEN_ALTERNATE;
 
-      // Create the authorization header
+      // Create Basic Auth header
       const authHeader = 'Basic ' + Buffer.from(accountSid + ':' + authToken).toString('base64');
 
-      // Send a GET request to the media URL with Basic Authentication header
       const mediaResponse = await axios.get(mediaUrl, {
-          responseType: 'arraybuffer',  // Important for downloading binary data
+          responseType: 'arraybuffer',
+          auth: {
+            username: accountSid,
+            password: authToken,
+        }
+      });
+  
+      const form = new FormData();
+      form.append('file', Buffer.from(mediaResponse.data), {
+          filename: 'audio.mp3',
+          contentType: 'audio/mp3',
+      });
+      form.append('model', 'whisper-1'); 
+      form.append('task', 'translate');
+      form.append('language', 'hi'); 
+
+      // Send directly to OpenAI Whisper for transcription
+      const result = await axios.post('https://api.openai.com/v1/audio/transcriptions', form, {
           headers: {
-              'Authorization': authHeader
-          }
+              ...form.getHeaders(),
+              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
       });
 
-      const uniqueId = Date.now().toString() + Math.random().toString(36).substring(2, 15);
-      
-      const {data, error} = await supabase.storage.from('voice-messages').upload(uniqueId, mediaResponse.data, {
-        contentType: 'audio/mp3',  // Set the content type (or adjust based on media type)
-        upsert: true,  // Optional: To overwrite existing files with the same name
-    })
-
-    const publicURL = `https://rxmjzmgvxbotzfqhidzd.supabase.co/storage/v1/object/public/${data.fullPath}`
-
-    if (error) {
-      console.error('Error uploading media to Supabase:', error);
-  } else {
-      console.log(`Voice message uploaded to Supabase: ${uniqueId}`);
-      return publicURL
-  }
+      if (result && result.data) {
+          console.log('Transcription result nwestttt======>:', result.data);
+          return result.data.text; 
+      } else {
+          console.log('No transcription result returned');
+          return null;
+      }
 
   } catch (error) {
-      console.error('Error downloading media:', error);
-  }
-}
-
-async function transcribeAudioFromUrl(audioUrl) {
-  try {
-
-    const response = await axios.get(audioUrl, {
-      responseType: 'arraybuffer',
-    });
-
-    const form = new FormData();
-    form.append('file', response.data, {
-      filename: 'audio.mp3', 
-      contentType: 'audio/mp3', 
-    });
-
-    form.append('model', 'whisper-1'); 
-
-    const result = await axios.post('https://api.openai.com/v1/audio/transcriptions', form, {
-      headers: {
-        ...form.getHeaders(), 
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-    });
-
-    if (result && result.data) {
-      console.log('Transcription result:', result.data);
-    } else {
-      console.log('No transcription result returned');
-    }
-
-    return result.data;
-
-  } catch (error) {
-    // Log the error details for debugging
-    console.error('Error transcribing audio:', error.response ? error.response.data : error.message);
+      console.error('Error transcribing audio:', error.response ? error.response.data : error.message);
+      return null;
   }
 }
 
@@ -358,24 +334,11 @@ async function makeTwilioRequest() {
       console.log(`Received a voice message from`);
       console.log(`Media URL: ${mediaUrl}`);
 
-      // Download the voice message
-      const audioUrl = await downloadMedia(mediaUrl, From);
+      const transcription = await transcribeAudioDirectly(mediaUrl);
 
-      console.log('audioUrl', audioUrl);
-
-      if (audioUrl) {
-        console.log('Audio URL:', audioUrl);
-
-        // Send the audio URL to the transcription function
-        const transcription = await transcribeAudioFromUrl(audioUrl);
-
-        if (transcription) {
-          userMessage = transcription.text; // Use the transcription as the user message
-        }
-
-        console.log('returned transcription--->', transcription);
-        
-      }
+      if (transcription) {
+        userMessage = transcription;
+    }
 
       const apiKey = process.env.WORDWARE_API_KEY;
       const requestBody = {
@@ -405,13 +368,7 @@ async function makeTwilioRequest() {
       console.log('parsedChunks length', parsedChunks[parsedChunks.length-1].value.values.new_generation);
 
       const cleanText = parsedChunks[parsedChunks.length-1].value.values.new_generation
-      // console.log('actual audio--->', cleanText);
-
-      // const cleanedTranscript = cleanText.replace(/^\n?Speaker \d+: /, '').trim();
-
-      // console.log('cleanedTranscript=====>',cleanedTranscript);
-      
-
+    
       console.log('clean text====>', cleanText);
       
       userMessage = cleanText
@@ -485,9 +442,6 @@ app.post('/update-reminder', async (req, res) => {
     cron.schedule(cronExpression, async () => {
         console.log("Checking for pending reminders...");
 
-        // const now = new Date();
-        // const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000).toISOString().slice(0, 16);
-
         const { data: tasks, error } = await supabase
             .from("tasks")
             .select("*")
@@ -513,12 +467,6 @@ app.post('/update-reminder', async (req, res) => {
             );
 
             userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks };
-
-            // Optional: Mark the task as "Reminder sent" to avoid resending it
-            // await supabase
-            //     .from("tasks")
-            //     .update({ task_done: "Reminder sent" })
-            //     .eq("id", task.id);
         }
     });
 
