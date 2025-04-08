@@ -188,7 +188,7 @@ convert it into the 24-hour format:
 - "6 AM" becomes "06:00"
 - "6 PM" becomes "18:00"
 - Ensure the output time is always in the 24-hour format (HH:mm).
-- If the user says "next X hours" or "in X minutes," calculate the current time and convert it into the exact time, ensuring it's in 24-hour format.
+- If the user says "next X hours" or "in X minutes," calculate the **current time** accordingly(e.g., if current time is 5:40 pm then "next 5 hours" will be 10:40 pm), ensuring it's in 24-hour format.
 
 Conversation history: ${JSON.stringify(conversationHistory)}
 User input: ${userMessage}
