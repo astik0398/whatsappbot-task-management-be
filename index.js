@@ -25,16 +25,42 @@ app.use(cors())
 let allData = [];
 let userSessions = {};
 let assignerMap = []
+let todayDate = ''
+let currentTime = ''
+
+const getFormattedDate = () => {
+  const today = new Date();
+  const options = { year: 'numeric', month: 'long', day: 'numeric' };
+  return today.toLocaleDateString('en-US', options);
+};
+
+const getFormattedTime = () => {
+  const now = new Date();
+  let hours = now.getHours();
+  const minutes = now.getMinutes();
+  const period = hours >= 12 ? 'pm' : 'am';
+
+  hours = hours % 12;
+  hours = hours === 0 ? 12 : hours;
+
+  const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+
+  return `${hours}:${formattedMinutes} ${period}`;
+};
 
 async function getAllTasks() {
   const { data, error } = await supabase.from("tasks").select("*");
   if (error) throw error;
-  console.log("data==>", data);
+  // console.log("data==>", data);
   return data;
 }
 async function main() {
+  todayDate = getFormattedDate()
+  currentTime = getFormattedTime()
+  console.log("todayDate==>", todayDate);
+  console.log("currentTime==>", currentTime);
   allData = await getAllTasks();
-  console.log("allData==>", allData);
+  // console.log("allData==>", allData);
 }
 main();
 app.get("/refresh", async (req, res) => {
@@ -146,12 +172,24 @@ convert it into the current year (e.g., "2025-02-28").
 - If the user provides a full date (e.g., "28th Feb 2025"), return it as is.
 - If no year is provided, assume the current year which is 2025 and return
 the date in the format YYYY-MM-DD.
+
+For dynamic date terms:
+- Today's date is ${todayDate}
+- If the user says "today," convert that into **the current date** (e.g., if today is April 5, 2025, it should return "2025-04-05").
+- If the user says "tomorrow," convert that into **the next day’s date** (e.g., if today is April 5, 2025, "tomorrow" should be "2025-04-06").
+- If the user says "next week," calculate the date of the same day in the following week (e.g., if today is April 5, 2025, "next week" would be April 12, 2025).
+- If the user provides a phrase like "in X days," calculate the due date accordingly (e.g., "in 3 days" should become "2025-04-08").
+- If the user provides terms like "next month," calculate the due date for the same day of the next month (e.g., if today is April 5, 2025, "next month" should become "2025-05-05").
+
 For due times:
+- Current time is ${currentTime}
 - If the user provides a time in "AM/PM" format (e.g., "6 PM" or "6 AM"),
 convert it into the 24-hour format:
 - "6 AM" becomes "06:00"
 - "6 PM" becomes "18:00"
 - Ensure the output time is always in the 24-hour format (HH:mm).
+- If the user says "next X hours" or "in X minutes," calculate the current time and convert it into the exact time, ensuring it's in 24-hour format.
+
 Conversation history: ${JSON.stringify(conversationHistory)}
 User input: ${userMessage}
 `;
