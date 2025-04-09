@@ -31,6 +31,9 @@ let currentTime = ''
 const getFormattedDate = () => {
   const today = new Date();
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
+
+  console.log(today.toLocaleDateString('en-US', options));
+  
   return today.toLocaleDateString('en-US', options);
 };
 
@@ -45,6 +48,9 @@ const getFormattedTime = () => {
 
   const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
 
+  console.log(`${hours}:${formattedMinutes} ${period}`);
+  
+
   return `${hours}:${formattedMinutes} ${period}`;
 };
 
@@ -55,10 +61,8 @@ async function getAllTasks() {
   return data;
 }
 async function main() {
-  todayDate = getFormattedDate()
-  currentTime = getFormattedTime()
-  console.log("todayDate==>", todayDate);
-  console.log("currentTime==>", currentTime);
+  // todayDate = getFormattedDate()
+  // currentTime = getFormattedTime()
   allData = await getAllTasks();
   // console.log("allData==>", allData);
 }
@@ -188,7 +192,7 @@ convert it into the 24-hour format:
 - "6 AM" becomes "06:00"
 - "6 PM" becomes "18:00"
 - Ensure the output time is always in the 24-hour format (HH:mm).
-- If the user says "next X hours" or "in X minutes," calculate the **current time** accordingly(e.g., if current time is 5:40 pm then "next 5 hours" will be 10:40 pm), ensuring it's in 24-hour format.
+- If the user says "next X hours" or "in X minutes," calculate the **current time** accordingly(e.g., if current time is 5:40 pm then "next 5 hours" will be 10:40 pm).
 
 Conversation history: ${JSON.stringify(conversationHistory)}
 User input: ${userMessage}
@@ -360,6 +364,9 @@ async function transcribeAudioDirectly(mediaUrl) {
 async function makeTwilioRequest() {
   app.post("/whatsapp", async (req, res) => {
     const { Body, From } = req.body;
+
+  todayDate = getFormattedDate()
+  currentTime = getFormattedTime()
 
     const mediaUrl = req.body.MediaUrl0;
     const mediaType = req.body.MediaContentType0;
