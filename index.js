@@ -9,6 +9,7 @@ const cors = require('cors');
 const { default: axios } = require("axios");
 const fs = require('fs');
 const FormData = require('form-data'); // to handle file upload
+const moment = require('moment-timezone');
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -38,31 +39,20 @@ const getFormattedDate = () => {
 };
 
 const getFormattedTime = () => {
-  const now = new Date();
-  let hours = now.getHours();
-  const minutes = now.getMinutes();
-  const period = hours >= 12 ? 'pm' : 'am';
-
-  hours = hours % 12;
-  hours = hours === 0 ? 12 : hours;
-
-  const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
-
-  console.log(`${hours}:${formattedMinutes} ${period}`);
-  
-
-  return `${hours}:${formattedMinutes} ${period}`;
+  const now = moment().tz("Asia/Kolkata"); 
+  return now.format("h:mm A");
 };
 
 async function getAllTasks() {
   const { data, error } = await supabase.from("tasks").select("*");
   if (error) throw error;
-  // console.log("data==>", data);
   return data;
 }
 async function main() {
-  // todayDate = getFormattedDate()
   // currentTime = getFormattedTime()
+
+  // console.log('currentTime', currentTime);
+  
   allData = await getAllTasks();
   // console.log("allData==>", allData);
 }
