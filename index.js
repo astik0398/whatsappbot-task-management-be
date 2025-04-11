@@ -19,7 +19,7 @@ const port = process.env.PORT || 8000;
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const client = new twilio(process.env.TWILIO_ACCOUNT_SID_ALTERNATE, process.env.TWILIO_AUTH_TOKEN_ALTERNATE);
+const client = new twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -319,8 +319,8 @@ async function transcribeAudioDirectly(mediaUrl) {
   try {
 
       // Twilio's Account SID and Auth Token
-      const accountSid = process.env.TWILIO_ACCOUNT_SID_ALTERNATE;
-      const authToken = process.env.TWILIO_AUTH_TOKEN_ALTERNATE;
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
 
       // Create Basic Auth header
       const authHeader = 'Basic ' + Buffer.from(accountSid + ':' + authToken).toString('base64');
