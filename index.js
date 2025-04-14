@@ -378,26 +378,35 @@ async function makeTwilioRequest() {
 
     let incomingMsg = Body.trim();
 
-    if (incomingMsg.toLowerCase().includes("schedule") && incomingMsg.toLowerCase().includes("meeting")) {
+    const userNumber = req.body.From;
+
+    if (incomingMsg.toLowerCase().includes("schedule") && incomingMsg.toLowerCase().includes("meeting") || 
+    (sessions[userNumber] && sessions[userNumber].pendingMeeting)) {
         console.log('MEETING WORD TRIGGERED!!!');
         
         const userMsg = req.body.Body;
-  const userNumber = req.body.From;
 
   // Initialize session if not exists
   if (!sessions[userNumber]) {
-    sessions[userNumber] = [
-      { role: 'system', content: 'You are a smart assistant helping schedule Google Calendar meetings with Google Meet links. Extract meeting details from the conversation. If something is missing, ask the user politely and naturally.' }
-    ];
+    sessions[userNumber] = {
+      history: [
+        {
+          role: 'system',
+          content:
+            'You are a smart assistant helping schedule Google Calendar meetings with Google Meet links. Extract meeting details from the conversation. If something is missing, ask the user politely and naturally.',
+        },
+      ],
+      pendingMeeting: false,
+    };
   }
 
   // Push user message to session
-  sessions[userNumber].push({ role: 'user', content: userMsg });
+  sessions[userNumber].history.push({ role: 'user', content: userMsg });
 
   // Generate reply with full context
   const completion = await openai.chat.completions.create({
     model: 'gpt-4',
-    messages: sessions[userNumber],
+    messages: sessions[userNumber].history,
     functions: [
       {
         name: 'create_calendar_event',
@@ -423,10 +432,12 @@ async function makeTwilioRequest() {
   const gptReply = completion.choices[0].message;
 
   // Save assistant message for context continuity
-  sessions[userNumber].push(gptReply);
+  sessions[userNumber].history.push(gptReply);
 
   // If function call is not triggered yet, GPT is asking for more info
   if (!gptReply.function_call) {
+    sessions[userNumber].pendingMeeting = true;
+
     const twiml = new MessagingResponse();
     twiml.message(gptReply.content || "Could you provide more details?");
     return res.type('text/xml').send(twiml.toString());
@@ -484,7 +495,8 @@ console.log("Attendees:", attendees);
     calendarResponse = await calendar.events.insert({
       calendarId: 'primary',
       resource: event,
-      conferenceDataVersion: 1
+      conferenceDataVersion: 1,
+      sendUpdates:'all'
     });
   } catch (error) {
     console.error('Calendar error:', error);
