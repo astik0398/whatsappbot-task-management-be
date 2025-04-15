@@ -450,7 +450,7 @@ async function makeTwilioRequest() {
 
 const naturalInput = `${date} ${startTime}`;
 
-const parsedDateTime = chrono.parseDate(naturalInput, new Date(), { timezone: 'Asia/Kolkata' });
+const parsedDateTime = chrono.parseDate(naturalInput, new Date());
 
 if (!parsedDateTime) {
   const twiml = new MessagingResponse();
@@ -458,8 +458,10 @@ if (!parsedDateTime) {
   return res.type('text/xml').send(twiml.toString());
 }
 
-const startDateTime = parsedDateTime;
-const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60000);
+// ✅ Convert parsed time to IST using moment-timezone
+const startDateTime = moment(parsedDateTime).tz('Asia/Kolkata');
+const endDateTime = startDateTime.clone().add(durationMinutes, 'minutes');
+
 
 
 console.log("Parsed values from OpenAI:");
@@ -474,7 +476,7 @@ console.log("Attendees:", attendees);
   const event = {
     summary: title,
     start: {
-      dateTime: startDateTime.toISOString(),
+      dateTime: startDateTime.toISOString(), // now correctly IST-adjusted
       timeZone: 'Asia/Kolkata'
     },
     end: {
@@ -506,7 +508,7 @@ console.log("Attendees:", attendees);
   }
 
   const twiml = new MessagingResponse();
-  twiml.message(`Meeting created! 📅\nTitle: ${title}\nDate: *${startDateTime}*\nTime: *${startTime}*\nLink: ${calendarResponse.data.hangoutLink}`);
+  twiml.message(`Meeting created! 📅\nTitle: ${title}\nDate: *${startDateTime.format('ddd MMM DD YYYY')}*\nTime: *${startDateTime.format('h:mm A')} IST*\nLink: ${calendarResponse.data.hangoutLink}`);
   return res.type('text/xml').send(twiml.toString());
 
     }
