@@ -459,7 +459,7 @@ if (!parsedDateTime) {
 }
 
 // ✅ Convert parsed time to IST using moment-timezone
-const startDateTime = moment(parsedDateTime).tz('Asia/Kolkata');
+const startDateTime = moment(parsedDateTime);
 const endDateTime = startDateTime.clone().add(durationMinutes, 'minutes');
 
 
@@ -467,7 +467,8 @@ const endDateTime = startDateTime.clone().add(durationMinutes, 'minutes');
 console.log("Parsed values from OpenAI:");
 console.log("Title:", title);
 console.log("Date:", date);
-console.log("startDateTime:", startDateTime);
+console.log("startDateTime:", startDateTime.toISOString());
+console.log("endDateTime:", endDateTime.toISOString());
 console.log("Start Time:", startTime);
 console.log("Duration (mins):", durationMinutes);
 console.log("Attendees:", attendees);
