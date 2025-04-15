@@ -476,11 +476,11 @@ console.log("Attendees:", attendees);
   const event = {
     summary: title,
     start: {
-      dateTime: startDateTime.toISOString(), // now correctly IST-adjusted
+      dateTime: startDateTime.format('YYYY-MM-DDTHH:mm:ss'), // ⬅️ key change
       timeZone: 'Asia/Kolkata'
     },
     end: {
-      dateTime: endDateTime.toISOString(),
+      dateTime: endDateTime.format('YYYY-MM-DDTHH:mm:ss'), // ⬅️ key change
       timeZone: 'Asia/Kolkata'
     },
     attendees: attendees.map(email => ({ email })),
