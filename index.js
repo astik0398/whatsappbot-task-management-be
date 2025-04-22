@@ -13,6 +13,7 @@ const moment = require("moment-timezone");
 const { google } = require("googleapis");
 const MessagingResponse = require("twilio").twiml.MessagingResponse;
 const chrono = require("chrono-node");
+const tinyurl = require("tinyurl");
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -38,6 +39,12 @@ oAuth2Client.setCredentials({
   refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
 });
 const calendar = google.calendar({ version: "v3", auth: oAuth2Client });
+
+const shortenUrl = async (longUrl) => {
+  const shortURL =  tinyurl.shorten(longUrl)
+  console.log('shortURL', shortURL);
+  return shortURL
+};
 
 let allData = [];
 let userSessions = {};
@@ -249,7 +256,38 @@ User input: ${userMessage}
       console.log("we are here===> 5", botReply);
 
       if (botReply[0] === "{") {
+        
         const taskDetails = JSON.parse(botReply);
+
+        const assigneeName = taskDetails.assignee.trim()
+
+        console.log('assigneeName====>',assigneeName);
+
+        const {data: matchingAssignees, error} = await supabase
+        .from('tasks').select('*').ilike('name', `%${assigneeName}%`)
+
+        if (error) {
+          console.error("Error fetching assignees:", error);
+          sendMessage(From, "Sorry, there was an error fetching the assignee data.");
+          return;
+        }
+
+        console.log('matchingAssignees====>',matchingAssignees);
+        
+
+        if (matchingAssignees.length > 1) {
+          let message = `There are multiple people with the name "${assigneeName}". Please choose one:\n`;
+          matchingAssignees.forEach((assignee, index) => {
+            message += `${index + 1}. ${assignee.name}\n`;
+          });
+          console.log('message-new===>', message);
+          
+          sendMessage(From, message);
+          session.step = 7;  // Mark this step for assignee selection
+          session.possibleAssignees = matchingAssignees;  // Store possible assignees
+          return;
+        }
+
 
         sendMessage(
           From,
@@ -260,7 +298,8 @@ User input: ${userMessage}
       Due Date: ${taskDetails.dueDate}
       Due Time: ${taskDetails.dueTime}
      Reminder Frequency: ${taskDetails.reminder_frequency}`
-        );
+        )
+        
       } else {
         sendMessage(From, botReply);
       }
@@ -449,7 +488,7 @@ async function makeTwilioRequest() {
 
         const twiml = new MessagingResponse();
         twiml.message(
-          `🛡️ To schedule meetings, please sign in with Google: ${authUrl}`
+          `🛡️ To schedule meetings, please sign in with Google: ${ await shortenUrl(authUrl)}`
         );
         return res.type("text/xml").send(twiml.toString());
       }
