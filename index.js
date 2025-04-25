@@ -283,8 +283,8 @@ User input: ${userMessage}
           console.log('message-new===>', message);
           
           sendMessage(From, message);
-          session.step = 7;  // Mark this step for assignee selection
-          session.possibleAssignees = matchingAssignees;  // Store possible assignees
+          session.step = 7; 
+          session.possibleAssignees = matchingAssignees; 
           return;
         }
 
@@ -332,7 +332,7 @@ User input: ${userMessage}
                     reminder_frequency: taskData.reminder_frequency,
                   },
                 ])
-                .eq("name", taskData.assignee)
+                .ilike("name", taskData.assignee)
                 .single();
               console.log("Matching Task:", data, error);
               if (error) {
