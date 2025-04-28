@@ -464,11 +464,10 @@ async function makeTwilioRequest() {
     const userNumber = req.body.From;
 
     if (
-      (incomingMsg.toLowerCase().includes("schedule") &&
-        incomingMsg.toLowerCase().includes("meeting")) ||
+      (incomingMsg.toLowerCase().includes("schedule")) ||
       (sessions[userNumber] && sessions[userNumber].pendingMeeting)
     ) {
-      console.log("MEETING WORD TRIGGERED!!!");
+      console.log("MEETING FUNC TRIGGERED!!!");
 
       const userMsg = req.body.Body;
 
