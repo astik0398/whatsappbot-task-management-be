@@ -511,6 +511,7 @@ You MUST check for missing or ambiguous fields. Be especially strict about time 
 - If a time like "8" or "tomorrow 8" is mentioned without AM/PM, ask the user to clarify.
 - Never assume AM or PM.
 - Phrases like "8", "5", or "at 3" without a clear indication of AM/PM or 24-hour format should be considered ambiguous.
+- If the year is missing in date of the meeting always assume the year as current year which is ${new Date().getFullYear()}
 
 If anything is unclear or missing, respond with a plain text clarification question. For example:
 "I noticed you said 'tomorrow 8'. Did you mean 8 AM or 8 PM? Please reply with the exact time."
