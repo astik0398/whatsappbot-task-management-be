@@ -264,7 +264,7 @@ User input: ${userMessage}
         console.log('assigneeName====>',assigneeName);
 
         const {data: matchingAssignees, error} = await supabase
-        .from('tasks').select('*').ilike('name', `%${assigneeName}%`)
+        .from('tasks').select('*').ilike('name', `%${assigneeName}%`).eq('employerNumber', From)
 
         if (error) {
           console.error("Error fetching assignees:", error);
@@ -272,6 +272,8 @@ User input: ${userMessage}
           return;
         }
 
+        console.log('FROM NUMBER===>', From);
+        
         console.log('matchingAssignees====>',matchingAssignees);
         
 
@@ -309,7 +311,7 @@ User input: ${userMessage}
           const taskData = JSON.parse(botReply);
           const assignedPerson = allData.find(
             (person) =>
-              person.name.toLowerCase() === taskData.assignee.toLowerCase()
+              person.name.toLowerCase() === taskData.assignee.toLowerCase() && person.employerNumber === From
           );
           console.log("assignedPerson--->", assignedPerson);
           console.log("taskData", taskData);
