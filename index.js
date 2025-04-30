@@ -134,10 +134,13 @@ async function handleUserInput(userMessage, From) {
   if (session.step === 5) {
     if (userMessage.toLowerCase() === "yes") {
       const task = session.task;
+      const assignee = session.assignee
+
       const { data, error } = await supabase
         .from("tasks")
         .update({ task_done: "Completed" })
         .eq("tasks", task)
+        .eq('name', assignee)
         .single();
 
       if (error) {
