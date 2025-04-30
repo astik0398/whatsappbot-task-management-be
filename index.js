@@ -267,8 +267,6 @@ User input: ${userMessage}
 
         console.log('assigneeName====>',assigneeName);
 
-        session.assignee = taskDetails.assignee.trim(); 
-
         const {data: matchingAssignees, error} = await supabase
         .from('tasks').select('*').ilike('name', `%${assigneeName}%`).eq('employerNumber', From)
 
@@ -828,7 +826,7 @@ app.post("/update-reminder", async (req, res) => {
         `Reminder: Has the task "${task.tasks}" assigned to you been completed yet? Reply with Yes or No.`
       );
 
-      userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks };
+      userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks, assignee: task.name };
     }
   });
 
