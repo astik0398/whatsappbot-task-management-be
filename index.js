@@ -165,7 +165,7 @@ async function handleUserInput(userMessage, From) {
   } else if (session.step === 6) {
     const reason = userMessage.trim();
     const task = session.task;
-    const assignee = session
+    const assignee = session.assignee
 
     console.log('assignee----session====>', assignee);
     
@@ -174,6 +174,7 @@ async function handleUserInput(userMessage, From) {
       .from("tasks")
       .update({ task_done: "Not Completed", reason: reason })
       .eq("tasks", task)
+      .eq('name', assignee)
       .single();
 
     if (error) {
