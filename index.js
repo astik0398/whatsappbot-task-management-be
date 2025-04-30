@@ -267,6 +267,8 @@ User input: ${userMessage}
 
         console.log('assigneeName====>',assigneeName);
 
+        session.assignee = taskDetails.assignee.trim(); 
+
         const {data: matchingAssignees, error} = await supabase
         .from('tasks').select('*').ilike('name', `%${assigneeName}%`).eq('employerNumber', From)
 
@@ -357,7 +359,6 @@ User input: ${userMessage}
   ${taskData.assignee}, a new task has been assigned to
   you:"${taskData.task}".\n\nDeadline: ${dueDateTime}`
                 );
-                session.assignee = taskData.assignee
                 delete userSessions[From];
                 session.conversationHistory = [];
               }
