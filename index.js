@@ -165,6 +165,10 @@ async function handleUserInput(userMessage, From) {
   } else if (session.step === 6) {
     const reason = userMessage.trim();
     const task = session.task;
+    const assignee = session
+
+    console.log('assignee----session====>', assignee);
+    
 
     const { data, error } = await supabase
       .from("tasks")
