@@ -357,6 +357,7 @@ User input: ${userMessage}
   ${taskData.assignee}, a new task has been assigned to
   you:"${taskData.task}".\n\nDeadline: ${dueDateTime}`
                 );
+                session.assignee = taskData.assignee
                 delete userSessions[From];
                 session.conversationHistory = [];
               }
