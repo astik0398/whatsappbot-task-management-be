@@ -343,7 +343,7 @@ User input: ${userMessage}
                   },
                 ])
                 .ilike("name", taskData.assignee)
-                .single();
+                .select();
               console.log("Matching Task:", data, error);
               if (error) {
                 console.error("Error inserting task into Supabase:", error);
