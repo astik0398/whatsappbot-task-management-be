@@ -846,7 +846,7 @@ app.post("/update-reminder", async (req, res) => {
       .neq("task_done", "Reminder sent")
       .not("tasks", "is", null)
       .neq("tasks", "")
-      .single()
+      // .single()
 
       if (error) {
         if (error.code === "PGRST116") {
