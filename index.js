@@ -371,6 +371,8 @@ User input: ${userMessage}
                 delete userSessions[From];
                 session.conversationHistory = [];
 
+                console.log('task-id-after inserting task', data[0].id);
+                
                 await fetch('https://whatsappbot-task-management-be-production.up.railway.app/update-reminder', {
                   method: 'POST',
                   headers: {
@@ -378,7 +380,7 @@ User input: ${userMessage}
                   },
                   body: JSON.stringify({
                     reminder_frequency: taskData.reminder_frequency,
-                    taskId: data.id // Pass the task ID
+                    taskId: data[0].id // Pass the task ID
                   })
                 })
                 .then(res => res.json())
