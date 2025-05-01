@@ -363,6 +363,24 @@ User input: ${userMessage}
                 );
                 delete userSessions[From];
                 session.conversationHistory = [];
+
+                await fetch('https://whatsappbot-task-management-be-production.up.railway.app/update-reminder', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    reminder_frequency: taskData.reminder_frequency
+                  })
+                })
+                .then(res => res.json())
+                .then(response => {
+                  console.log("Reminder endpoint response:", response);
+                })
+                .catch(error => {
+                  console.error("Error triggering reminder endpoint:", error);
+                });
+                
               }
             }
           } else {
