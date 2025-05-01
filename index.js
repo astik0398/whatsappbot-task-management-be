@@ -158,7 +158,7 @@ async function handleUserInput(userMessage, From) {
 
         console.log('taskID after YES response', taskId);
         
-      cronJobs.get(taskId)?.destroy();
+      cronJobs.get(taskId)?.stop();
       cronJobs.delete(taskId);
       }
 
@@ -851,7 +851,7 @@ app.post("/update-reminder", async (req, res) => {
       if (error) {
         if (error.code === "PGRST116") {
           console.log(`No matching task found for task ${taskId}. Stopping cron job.`);
-          cronJobs.get(taskId)?.destroy();
+          cronJobs.get(taskId)?.stop();
           cronJobs.delete(taskId);
         } else {
           console.error(`Error fetching task ${taskId}:`, error);
@@ -879,7 +879,7 @@ app.post("/update-reminder", async (req, res) => {
     else {
       // Stop the cron job if the task no longer needs reminders
       console.log(`Stopping cron job for task ${taskId}`);
-      cronJobs.get(taskId)?.destroy();
+      cronJobs.get(taskId)?.stop();
       cronJobs.delete(taskId);
     }
   });
