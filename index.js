@@ -152,6 +152,13 @@ async function handleUserInput(userMessage, From) {
       } else {
         sendMessage(From, "Thank you! The task has been marked as completed!");
         sendMessage(assignerMap[0], `The task "${task}" was completed.`);
+
+        const taskId = data.id;
+
+        console.log('taskID after YES response', taskId);
+        
+      cronJobs.get(taskId)?.destroy();
+      cronJobs.delete(taskId);
       }
 
       delete userSessions[From];
@@ -370,7 +377,8 @@ User input: ${userMessage}
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    reminder_frequency: taskData.reminder_frequency
+                    reminder_frequency: taskData.reminder_frequency,
+                    taskId: data.id // Pass the task ID
                   })
                 })
                 .then(res => res.json())
@@ -776,21 +784,22 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 let isCronRunning = false; // Track if the cron job is active
+const cronJobs = new Map(); // Map to store cron jobs for each task
 
 app.post("/update-reminder", async (req, res) => {
-  const { reminder_frequency } = req.body;
+  const { reminder_frequency, taskId } = req.body;
 
-  console.log("inside be update-reminder req.body", reminder_frequency);
+  console.log("inside be update-reminder req.body", reminder_frequency, taskId);
 
-  if (isCronRunning) {
-    console.log("Cron job already running. Ignoring duplicate trigger.");
+  if (cronJobs.has(taskId)) {
+    console.log(`Cron job already exists for task ${taskId}. Ignoring duplicate trigger.`);
     return res.status(200).json({ message: "Reminder already scheduled" });
   }
 
   isCronRunning = true;
 
   const frequencyPattern =
-    /(\d+)\s*(minute|min|mins|hour|hrs|hours|day|days)s?/;
+    /(\d+)\s*(minute|min|mins|hour|hr|hrs|hours|day|days)s?/;
   const match = reminder_frequency.match(frequencyPattern);
 
   console.log("frequencyPattern, match", frequencyPattern, match);
@@ -812,7 +821,7 @@ app.post("/update-reminder", async (req, res) => {
   // Construct the cron expression based on the unit
   if (unit === "minute" || unit === "min" || unit === "mins") {
     cronExpression = `*/${quantity} * * * *`; // Every X minutes
-  } else if (unit === "hour" || unit == "hours" || unit === "hrs") {
+  } else if (unit === "hour" || unit == "hours" || unit === "hrs" || unit === "hr") {
     cronExpression = `0 */${quantity} * * *`; // Every X hours, at the start of the hour
   } else if (unit === "day" || unit === "days") {
     cronExpression = `0 0 */${quantity} * *`; // Every X days, at midnight
@@ -821,12 +830,13 @@ app.post("/update-reminder", async (req, res) => {
     return res.status(400).json({ message: "Unsupported frequency unit" });
   }
 
-  cron.schedule(cronExpression, async () => {
-    console.log("Checking for pending reminders...");
+  const cronJob = cron.schedule(cronExpression, async () => {
+    console.log(`Checking reminder for task ${taskId}...`);
 
     const { data: tasks, error } = await supabase
       .from("tasks")
       .select("*")
+      .eq("id", taskId)
       .eq("reminder", true)
       .neq("task_done", "Completed")
       .neq("task_done", "No")
@@ -834,25 +844,38 @@ app.post("/update-reminder", async (req, res) => {
       .not("tasks", "is", null)
       .neq("tasks", "");
 
-    if (error) {
-      console.error("Error fetching reminders:", error);
-      return;
-    }
+      if (error) {
+        console.error(`Error fetching task ${taskId}:`, error);
+        return;
+      }
 
     console.log(`Found ${tasks.length} tasks to remind`);
 
-    for (const task of tasks) {
-      console.log("Sending reminder to:", task.phone);
+    if (tasks) {
+      console.log(`Sending reminder to: ${tasks.phone} for task ${taskId}`);
       sendMessage(
-        `whatsapp:+${task.phone}`,
-        `Reminder: Has the task "${task.tasks}" assigned to you been completed yet? Reply with Yes or No.`
+        `whatsapp:+${tasks.phone}`,
+        `Reminder: Has the task "${tasks.tasks}" assigned to you been completed yet? Reply with Yes or No.`
       );
 
-      userSessions[`whatsapp:+${task.phone}`] = { step: 5, task: task.tasks, assignee: task.name };
+      userSessions[`whatsapp:+${tasks.phone}`] = { step: 5, task: tasks.tasks, assignee: tasks.name };
+
+      
+    }
+
+    else {
+      // Stop the cron job if the task no longer needs reminders
+      console.log(`Stopping cron job for task ${taskId}`);
+      cronJobs.get(taskId)?.destroy();
+      cronJobs.delete(taskId);
     }
   });
 
+  cronJobs.set(taskId, cronJob);
+  console.log(`Scheduled reminder for task ${taskId} with frequency ${reminder_frequency}`);
+
   res.status(200).json({ message: "Reminder scheduled" });
+
 });
 
 app.listen(port, () => {
