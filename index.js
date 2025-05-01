@@ -141,6 +141,7 @@ async function handleUserInput(userMessage, From) {
         .update({ task_done: "Completed" })
         .eq("tasks", task)
         .eq('name', assignee)
+        .select()
         .single();
 
       if (error) {
@@ -153,7 +154,7 @@ async function handleUserInput(userMessage, From) {
         sendMessage(From, "Thank you! The task has been marked as completed!");
         sendMessage(assignerMap[0], `The task "${task}" was completed.`);
 
-        const taskId = data.id;
+        const taskId = data?.id;
 
         console.log('taskID after YES response', taskId);
         
