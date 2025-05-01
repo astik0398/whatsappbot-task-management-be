@@ -848,11 +848,17 @@ app.post("/update-reminder", async (req, res) => {
       .single()
 
       if (error) {
-        console.error(`Error fetching task ${taskId}:`, error);
+        if (error.code === "PGRST116") {
+          console.log(`No matching task found for task ${taskId}. Stopping cron job.`);
+          cronJobs.get(taskId)?.destroy();
+          cronJobs.delete(taskId);
+        } else {
+          console.error(`Error fetching task ${taskId}:`, error);
+        }
         return;
       }
 
-    console.log(`Found ${tasks.length} tasks to remind`);
+    console.log(`Found ${tasks} tasks to remind`);
 
     console.log('taskss inside cron', tasks);
     
