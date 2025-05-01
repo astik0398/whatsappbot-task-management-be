@@ -336,7 +336,7 @@ User input: ${userMessage}
                 .update([
                   {
                     tasks: taskData.task,
-                    reminder: false,
+                    reminder: true,
                     task_done: "Pending",
                     due_date: dueDateTime,
                     reminder_frequency: taskData.reminder_frequency,
