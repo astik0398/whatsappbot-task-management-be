@@ -844,7 +844,8 @@ app.post("/update-reminder", async (req, res) => {
       .neq("task_done", "No")
       .neq("task_done", "Reminder sent")
       .not("tasks", "is", null)
-      .neq("tasks", "");
+      .neq("tasks", "")
+      .single()
 
       if (error) {
         console.error(`Error fetching task ${taskId}:`, error);
@@ -852,6 +853,9 @@ app.post("/update-reminder", async (req, res) => {
       }
 
     console.log(`Found ${tasks.length} tasks to remind`);
+
+    console.log('taskss inside cron', tasks);
+    
 
     if (tasks) {
       console.log(`Sending reminder to: ${tasks.phone} for task ${taskId}`);
