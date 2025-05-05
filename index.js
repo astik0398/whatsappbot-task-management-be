@@ -197,7 +197,10 @@ async function handleUserInput(userMessage, From) {
       sendMessage(From, "Your response has been sent to the assigner.");
       sendMessage(
         assignerMap[0],
-        `The task "${session.task}" was not completed. Reason: ${reason.trim()}`
+        `⚠️ *Task Not Completed*
+
+The task *${session.task}* was not completed.
+📝 *Reason:* ${reason.trim()}`
       );
     }
 
@@ -365,9 +368,10 @@ Thank you for providing the task details! Here's a quick summary:
                 console.log("Task successfully added to Supabase.");
                 sendMessage(
                   From,
-                  `Task assigned to
-  ${taskData.assignee}:"${taskData.task}" with a due date of
-  ${dueDateTime}`
+                  `📌 *Task Assigned*
+
+A new task, *${taskData.task}* has been assigned to *${taskData.assignee}*
+🗓️ *Due Date:* ${dueDateTime}`
                 );
                 sendMessage(
                   `whatsapp:+${assignedPerson.phone}`,
@@ -906,7 +910,10 @@ app.post("/update-reminder", async (req, res) => {
       console.log(`Sending reminder to: ${tasks.phone} for task ${taskId}`);
       sendMessage(
         `whatsapp:+${tasks.phone}`,
-        `Reminder: Has the task "${tasks.tasks}" assigned to you been completed yet? Reply with Yes or No.`
+        `⏰ *Reminder*
+
+Has the task *${tasks.tasks}* assigned to you been completed yet?
+✉️ Reply with Yes or No.`
       );
 
       userSessions[`whatsapp:+${tasks.phone}`] = {
