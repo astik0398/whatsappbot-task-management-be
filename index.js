@@ -552,6 +552,18 @@ You MUST check for missing or ambiguous fields. Be especially strict about time 
 - Phrases like "8", "5", or "at 3" without a clear indication of AM/PM or 24-hour format should be considered ambiguous.
 - If the year is missing in date of the meeting always assume the year as current year which is ${new Date().getFullYear()}
 
+For dynamic date terms:
+- Today's date is ${todayDate}.
+- If the user says "today," convert that into **the current date** (e.g., if today is April 5, 2025, it should return "2025-04-05").
+- If the user says "tomorrow," convert that into **the next day’s date** (e.g., if today is April 5, 2025, "tomorrow" should return "2025-04-06").
+- If the user says "next week," calculate the date of the same day in the following week (e.g., if today is April 5, 2025, "next week" would return "2025-04-12").
+- If the user says "in X days," calculate the due date accordingly (e.g., "in 3 days" should return "2025-04-08").
+- If the user says "next month," calculate the due date for the same day of the next month (e.g., if today is April 5, 2025, "next month" should return "2025-05-05").
+
+For dynamic time terms:
+- Current time is ${currentTime}.
+- If the user says "next X hours" or "in X minutes," calculate the **current time** accordingly (e.g., if the current time is 5:40 PM, then "next 5 hours" will be 10:40 PM).
+
 If anything is unclear or missing, respond with a plain text clarification question. For example:
 "I noticed you said 'tomorrow 8'. Did you mean 8 AM or 8 PM? Please reply with the exact time."
 
