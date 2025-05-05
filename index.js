@@ -155,7 +155,7 @@ async function handleUserInput(userMessage, From) {
           From,
           "Thank you! The task has been marked as completed! ✅"
         );
-        sendMessage(assignerMap[0], `The task "${task}" was completed. ✅`);
+        sendMessage(assignerMap[0], `The task *${task}* was completed. ✅`);
 
         const taskId = data?.id;
 
@@ -194,7 +194,7 @@ async function handleUserInput(userMessage, From) {
       console.error("Error updating task with reason:", error);
       sendMessage(From, "Sorry, there was an error saving the reason. ⚠️");
     } else {
-      sendMessage(From, "Your response has been sent to the assigner.");
+      sendMessage(From, "📤 Your response has been sent to the assigner.");
       sendMessage(
         assignerMap[0],
         `⚠️ *Task Not Completed*
@@ -380,7 +380,7 @@ A new task, *${taskData.task}* has been assigned to *${taskData.assignee}*
 Hello *${taskData.assignee}*,
 You've been assigned a new task:
 
-📝 *Task:* "${taskData.task}"
+📝 *Task:* *${taskData.task}*
 📅 *Deadline:* ${dueDateTime}`
                 );
                 delete userSessions[From];
@@ -709,7 +709,8 @@ Do NOT reply with a summary or confirmation message if all the required fields a
       twiml.message(
         `Meeting created! 📅\nTitle: ${title}\nDate: *${startDateTime.format(
           "ddd MMM DD YYYY"
-        )}*\nTime: *${startDateTime.format("h:mm A")} IST*\nLink: ${calendarResponse.data.hangoutLink
+        )}*\nTime: *${startDateTime.format("h:mm A")} IST*\nLink: ${
+          calendarResponse.data.hangoutLink
         }`
       );
       return res.type("text/xml").send(twiml.toString());
