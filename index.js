@@ -41,9 +41,9 @@ oAuth2Client.setCredentials({
 const calendar = google.calendar({ version: "v3", auth: oAuth2Client });
 
 const shortenUrl = async (longUrl) => {
-  const shortURL =  tinyurl.shorten(longUrl)
-  console.log('shortURL', shortURL);
-  return shortURL
+  const shortURL = tinyurl.shorten(longUrl);
+  console.log("shortURL", shortURL);
+  return shortURL;
 };
 
 let allData = [];
@@ -134,13 +134,13 @@ async function handleUserInput(userMessage, From) {
   if (session.step === 5) {
     if (userMessage.toLowerCase() === "yes") {
       const task = session.task;
-      const assignee = session.assignee
+      const assignee = session.assignee;
 
       const { data, error } = await supabase
         .from("tasks")
         .update({ task_done: "Completed" })
         .eq("tasks", task)
-        .eq('name', assignee)
+        .eq("name", assignee)
         .select()
         .single();
 
@@ -151,22 +151,25 @@ async function handleUserInput(userMessage, From) {
           "Sorry, there was an error marking the task as completed."
         );
       } else {
-        sendMessage(From, "Thank you! The task has been marked as completed!");
-        sendMessage(assignerMap[0], `The task "${task}" was completed.`);
+        sendMessage(
+          From,
+          "Thank you! The task has been marked as completed! ✅"
+        );
+        sendMessage(assignerMap[0], `The task "${task}" was completed. ✅`);
 
         const taskId = data?.id;
 
-        console.log('taskID after YES response', taskId);
-        
-      cronJobs.get(taskId)?.stop();
-      cronJobs.delete(taskId);
+        console.log("taskID after YES response", taskId);
+
+        cronJobs.get(taskId)?.stop();
+        cronJobs.delete(taskId);
       }
 
       delete userSessions[From];
     } else if (userMessage.toLowerCase() === "no") {
       sendMessage(
         From,
-        "Why has the task not been completed? Please provide a reason."
+        "⚠️ Why has the task not been completed? Please provide a reason."
       );
 
       session.step = 6;
@@ -176,21 +179,20 @@ async function handleUserInput(userMessage, From) {
   } else if (session.step === 6) {
     const reason = userMessage.trim();
     const task = session.task;
-    const assignee = session.assignee
+    const assignee = session.assignee;
 
-    console.log('assignee----session====>', assignee);
-    
+    console.log("assignee----session====>", assignee);
 
     const { data, error } = await supabase
       .from("tasks")
       .update({ task_done: "Not Completed", reason: reason })
       .eq("tasks", task)
-      .eq('name', assignee)
+      .eq("name", assignee)
       .single();
 
     if (error) {
       console.error("Error updating task with reason:", error);
-      sendMessage(From, "Sorry, there was an error saving the reason.");
+      sendMessage(From, "Sorry, there was an error saving the reason. ⚠️");
     } else {
       sendMessage(From, "Your response has been sent to the assigner.");
       sendMessage(
@@ -272,52 +274,55 @@ User input: ${userMessage}
       console.log("we are here===> 5", botReply);
 
       if (botReply[0] === "{") {
-        
         const taskDetails = JSON.parse(botReply);
 
-        const assigneeName = taskDetails.assignee.trim()
+        const assigneeName = taskDetails.assignee.trim();
 
-        console.log('assigneeName====>',assigneeName);
+        console.log("assigneeName====>", assigneeName);
 
-        const {data: matchingAssignees, error} = await supabase
-        .from('tasks').select('*').ilike('name', `%${assigneeName}%`).eq('employerNumber', From)
+        const { data: matchingAssignees, error } = await supabase
+          .from("tasks")
+          .select("*")
+          .ilike("name", `%${assigneeName}%`)
+          .eq("employerNumber", From);
 
         if (error) {
           console.error("Error fetching assignees:", error);
-          sendMessage(From, "Sorry, there was an error fetching the assignee data.");
+          sendMessage(
+            From,
+            "Sorry, there was an error fetching the assignee data."
+          );
           return;
         }
 
-        console.log('FROM NUMBER===>', From);
-        
-        console.log('matchingAssignees====>',matchingAssignees);
-        
+        console.log("FROM NUMBER===>", From);
+
+        console.log("matchingAssignees====>", matchingAssignees);
 
         if (matchingAssignees.length > 1) {
           let message = `There are multiple people with the name "${assigneeName}". Please choose one:\n`;
           matchingAssignees.forEach((assignee, index) => {
             message += `${index + 1}. ${assignee.name}\n`;
           });
-          console.log('message-new===>', message);
-          
+          console.log("message-new===>", message);
+
           sendMessage(From, message);
-          session.step = 7; 
-          session.possibleAssignees = matchingAssignees; 
+          session.step = 7;
+          session.possibleAssignees = matchingAssignees;
           return;
         }
 
-
         sendMessage(
           From,
-          `Thank you for providing the task details. Let's summarize the task:
+          `✅ Task Summary
+Thank you for providing the task details! Here's a quick summary:
 
-      Task: ${taskDetails.task}
-      Assignee: ${taskDetails.assignee}
-      Due Date: ${taskDetails.dueDate}
-      Due Time: ${taskDetails.dueTime}
-     Reminder Frequency: ${taskDetails.reminder_frequency}`
-        )
-        
+📝 Task: ${taskDetails.task}
+👤 Assignee: ${taskDetails.assignee}
+📅 Due Date: ${taskDetails.dueDate}
+⏰ Due Time: ${taskDetails.dueTime}
+🔁 Reminder Frequency: ${taskDetails.reminder_frequency}`
+        );
       } else {
         sendMessage(From, botReply);
       }
@@ -327,7 +332,8 @@ User input: ${userMessage}
           const taskData = JSON.parse(botReply);
           const assignedPerson = allData.find(
             (person) =>
-              person.name.toLowerCase() === taskData.assignee.toLowerCase() && person.employerNumber === From
+              person.name.toLowerCase() === taskData.assignee.toLowerCase() &&
+              person.employerNumber === From
           );
           console.log("assignedPerson--->", assignedPerson);
           console.log("taskData", taskData);
@@ -365,33 +371,40 @@ User input: ${userMessage}
                 );
                 sendMessage(
                   `whatsapp:+${assignedPerson.phone}`,
-                  `Hello
-  ${taskData.assignee}, a new task has been assigned to
-  you:"${taskData.task}".\n\nDeadline: ${dueDateTime}`
+                  `📬 New Task Assigned!
+
+Hello ${taskData.assignee},
+You've been assigned a new task:
+
+📝 "${taskData.task}"
+
+📅 Deadline: ${dueDateTime}`
                 );
                 delete userSessions[From];
                 session.conversationHistory = [];
 
-                console.log('task-id-after inserting task', data[0].id);
-                
-                await fetch('https://whatsappbot-task-management-be-production.up.railway.app/update-reminder', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    reminder_frequency: taskData.reminder_frequency,
-                    taskId: data[0].id // Pass the task ID
+                console.log("task-id-after inserting task", data[0].id);
+
+                await fetch(
+                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      reminder_frequency: taskData.reminder_frequency,
+                      taskId: data[0].id, // Pass the task ID
+                    }),
+                  }
+                )
+                  .then((res) => res.json())
+                  .then((response) => {
+                    console.log("Reminder endpoint response:", response);
                   })
-                })
-                .then(res => res.json())
-                .then(response => {
-                  console.log("Reminder endpoint response:", response);
-                })
-                .catch(error => {
-                  console.error("Error triggering reminder endpoint:", error);
-                });
-                
+                  .catch((error) => {
+                    console.error("Error triggering reminder endpoint:", error);
+                  });
               }
             }
           } else {
@@ -503,7 +516,7 @@ async function makeTwilioRequest() {
     const userNumber = req.body.From;
 
     if (
-      (incomingMsg.toLowerCase().includes("schedule")) ||
+      incomingMsg.toLowerCase().includes("schedule") ||
       (sessions[userNumber] && sessions[userNumber].pendingMeeting)
     ) {
       console.log("MEETING FUNC TRIGGERED!!!");
@@ -526,7 +539,9 @@ async function makeTwilioRequest() {
 
         const twiml = new MessagingResponse();
         twiml.message(
-          `🛡️ To schedule meetings, please sign in with Google: ${ await shortenUrl(authUrl)}`
+          `🛡️ To schedule meetings, please sign in with Google: ${await shortenUrl(
+            authUrl
+          )}`
         );
         return res.type("text/xml").send(twiml.toString());
       }
@@ -536,7 +551,7 @@ async function makeTwilioRequest() {
         sessions[userNumber] = {
           history: [
             {
-              role: 'system',
+              role: "system",
               content: `You are a helpful assistant that schedules meetings using Google Calendar.
 
 Your task is to first analyze the user's message and check if it contains all required information to schedule a meeting:
@@ -691,8 +706,7 @@ Do NOT reply with a summary or confirmation message if all the required fields a
       twiml.message(
         `Meeting created! 📅\nTitle: ${title}\nDate: *${startDateTime.format(
           "ddd MMM DD YYYY"
-        )}*\nTime: *${startDateTime.format("h:mm A")} IST*\nLink: ${
-          calendarResponse.data.hangoutLink
+        )}*\nTime: *${startDateTime.format("h:mm A")} IST*\nLink: ${calendarResponse.data.hangoutLink
         }`
       );
       return res.type("text/xml").send(twiml.toString());
@@ -768,15 +782,15 @@ Do NOT reply with a summary or confirmation message if all the required fields a
   });
 }
 
-app.get('/auth/google/callback', async (req, res) => {
+app.get("/auth/google/callback", async (req, res) => {
   const code = req.query.code;
   const state = req.query.state;
 
-  if (!code || !state || !state.startsWith('whatsapp:')) {
-    return res.send('Invalid request');
+  if (!code || !state || !state.startsWith("whatsapp:")) {
+    return res.send("Invalid request");
   }
 
-  const userNumber = state.replace('whatsapp:', '');
+  const userNumber = state.replace("whatsapp:", "");
   const oAuth2Client = new google.auth.OAuth2(
     process.env.CLIENT_ID,
     process.env.CLIENT_SECRET,
@@ -789,15 +803,17 @@ app.get('/auth/google/callback', async (req, res) => {
       return res.send("❌ Google didn't return a refresh token. Try again.");
     }
 
-    console.log('tokens',tokens);
-    
-    const saved = await saveRefreshToken(userNumber, tokens.refresh_token);
-    if (!saved) return res.send('❌ Failed to save token.');
+    console.log("tokens", tokens);
 
-    return res.send('✅ Authentication successful! You can now schedule meetings on WhatsApp.');
+    const saved = await saveRefreshToken(userNumber, tokens.refresh_token);
+    if (!saved) return res.send("❌ Failed to save token.");
+
+    return res.send(
+      "✅ Authentication successful! You can now schedule meetings on WhatsApp."
+    );
   } catch (err) {
-    console.error('OAuth error:', err.message);
-    res.send('❌ Failed to authenticate with Google.');
+    console.error("OAuth error:", err.message);
+    res.send("❌ Failed to authenticate with Google.");
   }
 });
 
@@ -810,7 +826,9 @@ app.post("/update-reminder", async (req, res) => {
   console.log("inside be update-reminder req.body", reminder_frequency, taskId);
 
   if (cronJobs.has(taskId)) {
-    console.log(`Cron job already exists for task ${taskId}. Ignoring duplicate trigger.`);
+    console.log(
+      `Cron job already exists for task ${taskId}. Ignoring duplicate trigger.`
+    );
     return res.status(200).json({ message: "Reminder already scheduled" });
   }
 
@@ -839,7 +857,12 @@ app.post("/update-reminder", async (req, res) => {
   // Construct the cron expression based on the unit
   if (unit === "minute" || unit === "min" || unit === "mins") {
     cronExpression = `*/${quantity} * * * *`; // Every X minutes
-  } else if (unit === "hour" || unit == "hours" || unit === "hrs" || unit === "hr") {
+  } else if (
+    unit === "hour" ||
+    unit == "hours" ||
+    unit === "hrs" ||
+    unit === "hr"
+  ) {
     cronExpression = `0 */${quantity} * * *`; // Every X hours, at the start of the hour
   } else if (unit === "day" || unit === "days") {
     cronExpression = `0 0 */${quantity} * *`; // Every X days, at midnight
@@ -861,23 +884,24 @@ app.post("/update-reminder", async (req, res) => {
       .neq("task_done", "Reminder sent")
       .not("tasks", "is", null)
       .neq("tasks", "")
-      .single()
+      .single();
 
-      if (error) {
-        if (error.code === "PGRST116") {
-          console.log(`No matching task found for task ${taskId}. Stopping cron job.`);
-          cronJobs.get(taskId)?.stop();
-          cronJobs.delete(taskId);
-        } else {
-          console.error(`Error fetching task ${taskId}:`, error);
-        }
-        return;
+    if (error) {
+      if (error.code === "PGRST116") {
+        console.log(
+          `No matching task found for task ${taskId}. Stopping cron job.`
+        );
+        cronJobs.get(taskId)?.stop();
+        cronJobs.delete(taskId);
+      } else {
+        console.error(`Error fetching task ${taskId}:`, error);
       }
+      return;
+    }
 
     console.log(`Found ${tasks} tasks to remind`);
 
-    console.log('taskss inside cron', tasks);
-    
+    console.log("taskss inside cron", tasks);
 
     if (tasks) {
       console.log(`Sending reminder to: ${tasks.phone} for task ${taskId}`);
@@ -886,12 +910,12 @@ app.post("/update-reminder", async (req, res) => {
         `Reminder: Has the task "${tasks.tasks}" assigned to you been completed yet? Reply with Yes or No.`
       );
 
-      userSessions[`whatsapp:+${tasks.phone}`] = { step: 5, task: tasks.tasks, assignee: tasks.name };
-
-      
-    }
-
-    else {
+      userSessions[`whatsapp:+${tasks.phone}`] = {
+        step: 5,
+        task: tasks.tasks,
+        assignee: tasks.name,
+      };
+    } else {
       // Stop the cron job if the task no longer needs reminders
       console.log(`Stopping cron job for task ${taskId}`);
       cronJobs.get(taskId)?.stop();
@@ -900,10 +924,11 @@ app.post("/update-reminder", async (req, res) => {
   });
 
   cronJobs.set(taskId, cronJob);
-  console.log(`Scheduled reminder for task ${taskId} with frequency ${reminder_frequency}`);
+  console.log(
+    `Scheduled reminder for task ${taskId} with frequency ${reminder_frequency}`
+  );
 
   res.status(200).json({ message: "Reminder scheduled" });
-
 });
 
 app.listen(port, () => {
