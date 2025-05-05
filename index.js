@@ -314,14 +314,14 @@ User input: ${userMessage}
 
         sendMessage(
           From,
-          `✅ Task Summary
+          `✅ *Task Summary*
 Thank you for providing the task details! Here's a quick summary:
 
-📝 Task: ${taskDetails.task}
-👤 Assignee: ${taskDetails.assignee}
-📅 Due Date: ${taskDetails.dueDate}
-⏰ Due Time: ${taskDetails.dueTime}
-🔁 Reminder Frequency: ${taskDetails.reminder_frequency}`
+📝 *Task:* ${taskDetails.task}
+👤 *Assignee:* ${taskDetails.assignee}
+📅 *Due Date:* ${taskDetails.dueDate}
+⏰ *Due Time:* ${taskDetails.dueTime}
+🔁 *Reminder Frequency:* ${taskDetails.reminder_frequency}`
         );
       } else {
         sendMessage(From, botReply);
@@ -371,14 +371,13 @@ Thank you for providing the task details! Here's a quick summary:
                 );
                 sendMessage(
                   `whatsapp:+${assignedPerson.phone}`,
-                  `📬 New Task Assigned!
+                  `📬 *New Task Assigned!*
 
-Hello ${taskData.assignee},
+Hello *${taskData.assignee}*,
 You've been assigned a new task:
 
-📝 "${taskData.task}"
-
-📅 Deadline: ${dueDateTime}`
+📝 *Task:* "${taskData.task}"
+📅 *Deadline:* ${dueDateTime}`
                 );
                 delete userSessions[From];
                 session.conversationHistory = [];
