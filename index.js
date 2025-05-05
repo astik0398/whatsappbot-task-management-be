@@ -567,7 +567,10 @@ For dynamic time terms:
 If anything is unclear or missing, respond with a plain text clarification question. For example:
 "I noticed you said 'tomorrow 8'. Did you mean 8 AM or 8 PM? Please reply with the exact time."
 
-If the message is clear and contains all fields with no ambiguity, return nothing — leave the response empty.`,
+If the message is clear, contains all the required fields (invitee email, meeting title, date, time with AM/PM, and duration), and there is no ambiguity, proceed to schedule the meeting **immediately** without sending a confirmation or asking the user to respond again.
+
+Do NOT reply with a summary or confirmation message if all the required fields are present and unambiguous. Simply schedule the meeting silently.
+`,
             },
           ],
           pendingMeeting: false,
