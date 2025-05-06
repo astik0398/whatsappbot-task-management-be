@@ -875,7 +875,7 @@ app.get("/auth/google/callback", async (req, res) => {
   <body>
     <div class="card">
       <div>
-        <img src="./thumbsup.png" alt="Thumbs Up" />
+        <img src="https://rxmjzmgvxbotzfqhidzd.supabase.co/storage/v1/object/public/images//thumbsup.png" alt="Thumbs Up" />
       </div>
 
       <div>
