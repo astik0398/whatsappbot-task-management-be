@@ -812,41 +812,89 @@ app.get("/auth/google/callback", async (req, res) => {
     const saved = await saveRefreshToken(userNumber, tokens.refresh_token);
     if (!saved) return res.send("❌ Failed to save token.");
 
-    return res.send(`
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Authentication Success</title>
-        <style>
-          body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-          }
-          .card {
-            background-color: #ff4d4d;
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            max-width: 400px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          ✅ Authentication successful! You can now schedule meetings on WhatsApp.
-        </div>
-      </body>
-      </html>
-    `);
+    return res.send(
+     `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Authentication Success</title>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+      }
+      .card {
+        background-color: #ffffff; /* Changed to white background */
+        color: #333; /* Changed text color for contrast */
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        max-width: 45%;
+      }
+      .card img {
+        width: 150px;
+        height: 150px;
+        vertical-align: middle;
+        margin-right: 10px;
+      }
+
+      .continue-button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 30px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        margin-top: 15px;
+    }
+
+    .continue-button:hover {
+        background-color: #45a049;
+        transform: scale(1.05);
+    }
+
+    .continue-button:active {
+        background-color: #3e8e41;
+        transform: scale(0.98);
+    }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div>
+        <img src="./thumbsup.png" alt="Thumbs Up" />
+      </div>
+
+      <div>
+        <h2>✅ Authentication Successful! 🎉<br /></h2>
+
+        <h3 style="font-size: 25px;">
+            You can now schedule any meetings on WhatsApp 📅📱
+        </h3>
+      </div>
+
+      <div>
+        <a href="https://wa.me/15557083934" target="_blank">
+            <button class="continue-button">👉 Continue</button>
+        </a>
+    </div>
+    </div>
+  </body>
+</html>`
+    );
   } catch (err) {
     console.error("OAuth error:", err.message);
     res.send("❌ Failed to authenticate with Google.");
