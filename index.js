@@ -542,9 +542,9 @@ async function makeTwilioRequest() {
 
         const twiml = new MessagingResponse();
         twiml.message(
-          `🛡️ To schedule meetings, please sign in with Google: ${await shortenUrl(
+          `📅 Ready to schedule your meeting? Sign in with Google to continue: ${await shortenUrl(
             authUrl
-          )}`
+          )} 🛡️`
         );
         return res.type("text/xml").send(twiml.toString());
       }
@@ -707,9 +707,9 @@ Do NOT reply with a summary or confirmation message if all the required fields a
 
       const twiml = new MessagingResponse();
       twiml.message(
-        `Meeting created! 📅\nTitle: ${title}\nDate: *${startDateTime.format(
+        `✅ Meeting successfully created! 🎉\n📝 *Title:* ${title}\n📅 *Date:* ${startDateTime.format(
           "ddd MMM DD YYYY"
-        )}*\nTime: *${startDateTime.format("h:mm A")} IST*\nLink: ${
+        )}\n🕒 *Time:* ${startDateTime.format("h:mm A")} IST\n🔗 *Link:* ${
           calendarResponse.data.hangoutLink
         }`
       );
@@ -812,9 +812,41 @@ app.get("/auth/google/callback", async (req, res) => {
     const saved = await saveRefreshToken(userNumber, tokens.refresh_token);
     if (!saved) return res.send("❌ Failed to save token.");
 
-    return res.send(
-      "✅ Authentication successful! You can now schedule meetings on WhatsApp."
-    );
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Authentication Success</title>
+        <style>
+          body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+          }
+          .card {
+            background-color: #ff4d4d;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          ✅ Authentication successful! You can now schedule meetings on WhatsApp.
+        </div>
+      </body>
+      </html>
+    `);
   } catch (err) {
     console.error("OAuth error:", err.message);
     res.send("❌ Failed to authenticate with Google.");
