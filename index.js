@@ -63,6 +63,19 @@ const getFormattedDate = () => {
   return today.toLocaleDateString("en-US", options);
 };
 
+const getCurrentDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+
+  console.log(`${year}-${month}-${day} ${hours}:${minutes}`);
+
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+};
+
 async function getRefreshToken(userNumber) {
   const { data } = await supabase
     .from("user_tokens")
@@ -96,32 +109,32 @@ const getFormattedTime = () => {
 };
 
 async function getAllTasks() {
-  const { data, error } = await supabase.from("tasks").select("*");
+  const { data, error } = await supabase.from("grouped_tasks").select("*");
   if (error) throw error;
+
+  console.log("fetched data--->", data);
+
   return data;
 }
 async function main() {
-  // currentTime = getFormattedTime()
-
-  // console.log('currentTime', currentTime);
-
   allData = await getAllTasks();
-  // console.log("allData==>", allData);
 }
+
 main();
+
 app.get("/refresh", async (req, res) => {
   console.log("Refreshing tasks from Supabase...");
-  const { data, error } = await supabase.from("tasks").select("*");
+  const { data, error } = await supabase.from("grouped_tasks").select("*");
   if (error) {
     console.error("Error refreshing tasks:", error);
     return res.status(500).json({ message: "Error fetching tasks" });
   }
   allData = data;
-  console.log("Tasks updated!");
   res
     .status(200)
     .json({ message: "Tasks refreshed successfully", tasks: allData });
 });
+
 async function handleUserInput(userMessage, From) {
   console.log("we are here===> 1");
   const session = userSessions[From];
@@ -133,19 +146,34 @@ async function handleUserInput(userMessage, From) {
 
   if (session.step === 5) {
     if (userMessage.toLowerCase() === "yes") {
-      const task = session.task;
+      const taskId = session.taskId; // Now using taskId instead of task name
       const assignee = session.assignee;
 
       const { data, error } = await supabase
-        .from("tasks")
-        .update({ task_done: "Completed" })
-        .eq("tasks", task)
+        .from("grouped_tasks")
+        .select("tasks")
         .eq("name", assignee)
-        .select()
         .single();
 
       if (error) {
-        console.error("Error updating task:", error);
+        console.error("Error fetching tasks:", error);
+        sendMessage(From, "Sorry, there was an error accessing the task.");
+        return;
+      }
+
+      const updatedTasks = data.tasks.map((task) =>
+        task.taskId === taskId ? { ...task, task_done: "Completed" } : task
+      );
+
+      console.log("updatedTasks --->", updatedTasks);
+
+      const { error: updateError } = await supabase
+        .from("grouped_tasks")
+        .update({ tasks: updatedTasks })
+        .eq("name", assignee);
+
+      if (updateError) {
+        console.error("Error updating task:", updateError);
         sendMessage(
           From,
           "Sorry, there was an error marking the task as completed."
@@ -155,11 +183,10 @@ async function handleUserInput(userMessage, From) {
           From,
           "Thank you! The task has been marked as completed! ✅"
         );
-        sendMessage(assignerMap[0], `The task *${task}* was completed. ✅`);
-
-        const taskId = data?.id;
-
-        console.log("taskID after YES response", taskId);
+        sendMessage(
+          assignerMap[0],
+          `The task with ID ${taskId} was completed. ✅`
+        );
 
         cronJobs.get(taskId)?.stop();
         cronJobs.delete(taskId);
@@ -177,30 +204,48 @@ async function handleUserInput(userMessage, From) {
       sendMessage(From, "Please respond with 'Yes' or 'No'.");
     }
   } else if (session.step === 6) {
+    console.log("session --- >", session);
+
     const reason = userMessage.trim();
     const task = session.task;
     const assignee = session.assignee;
+    const taskId = session.taskId;
 
     console.log("assignee----session====>", assignee);
 
     const { data, error } = await supabase
-      .from("tasks")
-      .update({ task_done: "Not Completed", reason: reason })
-      .eq("tasks", task)
+      .from("grouped_tasks")
+      .select("tasks")
       .eq("name", assignee)
       .single();
 
     if (error) {
-      console.error("Error updating task with reason:", error);
+      console.error("Error fetching tasks:", error);
+      sendMessage(From, "Sorry, there was an error accessing the task.");
+      return;
+    }
+
+    const updatedTasks = data.tasks.map((task) =>
+      task.taskId === taskId
+        ? { ...task, task_done: "Not Completed", reason }
+        : task
+    );
+
+    console.log("updatedTasks --->", updatedTasks);
+
+    const { error: updateError } = await supabase
+      .from("grouped_tasks")
+      .update({ tasks: updatedTasks })
+      .eq("name", assignee);
+
+    if (updateError) {
+      console.error("Error updating task with reason:", updateError);
       sendMessage(From, "Sorry, there was an error saving the reason. ⚠️");
     } else {
       sendMessage(From, "📤 Your response has been sent to the assigner.");
       sendMessage(
         assignerMap[0],
-        `⚠️ *Task Not Completed*
-
-The task *${session.task}* was not completed.
-📝 *Reason:* ${reason.trim()}`
+        `⚠️ *Task Not Completed*\n\nThe task with ID ${taskId} was not completed.\n📝 *Reason:* ${reason.trim()}`
       );
     }
 
@@ -284,7 +329,7 @@ User input: ${userMessage}
         console.log("assigneeName====>", assigneeName);
 
         const { data: matchingAssignees, error } = await supabase
-          .from("tasks")
+          .from("grouped_tasks")
           .select("*")
           .ilike("name", `%${assigneeName}%`)
           .eq("employerNumber", From);
@@ -348,45 +393,63 @@ Thank you for providing the task details! Here's a quick summary:
               taskData.dueDate &&
               taskData.dueTime
             ) {
+              const newTask = {
+                taskId: Date.now().toString(), // Simple ID generation; consider UUID for production
+                task_details: taskData.task,
+                task_done: "Pending",
+                due_date: dueDateTime,
+                reminder: "true",
+                reminder_frequency: taskData.reminder_frequency,
+                reason: null,
+                started_at: getCurrentDate(),
+              };
+
+              const { data: existingData, error: fetchError } = await supabase
+                .from("grouped_tasks")
+                .select("tasks")
+                .eq("name", taskData.assignee)
+                .eq("employerNumber", From)
+                .single();
+
+              if (fetchError) {
+                console.error("Error fetching existing tasks:", fetchError);
+                sendMessage(From, "Error accessing assignee tasks.");
+                return;
+              }
+
+              console.log('existing-data', existingData);
+              
+
+              const updatedTasks = existingData.tasks
+                ? [...existingData.tasks, newTask]
+                : [newTask];
+
+              console.log("task-data---->", taskData);
+              console.log("updated-tasks--->", updatedTasks);
+
               const { data, error } = await supabase
-                .from("tasks")
-                .update([
-                  {
-                    tasks: taskData.task,
-                    reminder: true,
-                    task_done: "Pending",
-                    due_date: dueDateTime,
-                    reminder_frequency: taskData.reminder_frequency,
-                  },
-                ])
-                .ilike("name", taskData.assignee)
+                .from("grouped_tasks")
+                .update({ tasks: updatedTasks })
+                .eq("name", taskData.assignee)
+                .eq("employerNumber", From)
                 .select();
+
               console.log("Matching Task:", data, error);
               if (error) {
                 console.error("Error inserting task into Supabase:", error);
+                sendMessage(From, "Error saving the task.");
               } else {
                 console.log("Task successfully added to Supabase.");
                 sendMessage(
                   From,
-                  `📌 *Task Assigned*
-
-A new task, *${taskData.task}* has been assigned to *${taskData.assignee}*
-🗓️ *Due Date:* ${dueDateTime}`
+                  `📌 *Task Assigned*\n\nA new task, *${taskData.task}* has been assigned to *${taskData.assignee}*\n🗓️ *Due Date:* ${dueDateTime}`
                 );
                 sendMessage(
                   `whatsapp:+${assignedPerson.phone}`,
-                  `📬 *New Task Assigned!*
-
-Hello *${taskData.assignee}*,
-You've been assigned a new task:
-
-📝 *Task:* *${taskData.task}*
-📅 *Deadline:* ${dueDateTime}`
+                  `📬 *New Task Assigned!*\n\nHello *${taskData.assignee}*,\nYou've been assigned a new task:\n\n📝 *Task:* *${taskData.task}*\n📅 *Deadline:* ${dueDateTime}`
                 );
                 delete userSessions[From];
                 session.conversationHistory = [];
-
-                console.log("task-id-after inserting task", data[0].id);
 
                 await fetch(
                   "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
@@ -397,12 +460,14 @@ You've been assigned a new task:
                     },
                     body: JSON.stringify({
                       reminder_frequency: taskData.reminder_frequency,
-                      taskId: data[0].id, // Pass the task ID
+                      taskId: newTask.taskId,
                     }),
                   }
                 )
                   .then((res) => res.json())
                   .then((response) => {
+                    console.log("taskID for reminder--->", newTask.taskId);
+
                     console.log("Reminder endpoint response:", response);
                   })
                   .catch((error) => {
@@ -813,7 +878,7 @@ app.get("/auth/google/callback", async (req, res) => {
     if (!saved) return res.send("❌ Failed to save token.");
 
     return res.send(
-     `<!DOCTYPE html>
+      `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -958,56 +1023,69 @@ app.post("/update-reminder", async (req, res) => {
   const cronJob = cron.schedule(cronExpression, async () => {
     console.log(`Checking reminder for task ${taskId}...`);
 
-    const { data: tasks, error } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("id", taskId)
-      .eq("reminder", true)
-      .neq("task_done", "Completed")
-      .neq("task_done", "No")
-      .neq("task_done", "Reminder sent")
-      .not("tasks", "is", null)
-      .neq("tasks", "")
-      .single();
+    const { data: groupedData, error } = await supabase
+      .from("grouped_tasks")
+      .select("name, phone, tasks");
 
     if (error) {
-      if (error.code === "PGRST116") {
-        console.log(
-          `No matching task found for task ${taskId}. Stopping cron job.`
-        );
-        cronJobs.get(taskId)?.stop();
-        cronJobs.delete(taskId);
-      } else {
-        console.error(`Error fetching task ${taskId}:`, error);
-      }
+      console.error("Error fetching grouped_tasks", error);
       return;
     }
 
-    console.log(`Found ${tasks} tasks to remind`);
+    const matchedRow = groupedData.find((row) =>
+      row.tasks?.some((task) => task.taskId === taskId)
+    );
 
-    console.log("taskss inside cron", tasks);
-
-    if (tasks) {
-      console.log(`Sending reminder to: ${tasks.phone} for task ${taskId}`);
-      sendMessage(
-        `whatsapp:+${tasks.phone}`,
-        `⏰ *Reminder*
-
-Has the task *${tasks.tasks}* assigned to you been completed yet?
-✉️ Reply with Yes or No.`
+    if (!matchedRow) {
+      console.log(
+        `No matching task found for task ${taskId}. Stopping cron job.`
       );
-
-      userSessions[`whatsapp:+${tasks.phone}`] = {
-        step: 5,
-        task: tasks.tasks,
-        assignee: tasks.name,
-      };
-    } else {
-      // Stop the cron job if the task no longer needs reminders
-      console.log(`Stopping cron job for task ${taskId}`);
       cronJobs.get(taskId)?.stop();
       cronJobs.delete(taskId);
+      return;
     }
+
+    const matchedTask = matchedRow.tasks.find((task) => task.taskId === taskId);
+
+    console.log("matched task --- >", matchedTask);
+
+    if (
+      matchedTask.reminder !== "true" ||
+      matchedTask.task_done === "Completed" ||
+      matchedTask.task_done === "No" ||
+      matchedTask.task_done === "Reminder sent" ||
+      !matchedTask.task_details
+    ) {
+      console.log(
+        `Task ${taskId} doesn't need reminder anymore. Stopping cron job.`
+      );
+      cronJobs.get(taskId)?.stop();
+      cronJobs.delete(taskId);
+      return;
+    }
+
+    console.log(`Sending reminder to: ${matchedRow.phone} for task ${taskId}`);
+
+    sendMessage(
+      `whatsapp:+${matchedRow.phone}`,
+      `⏰ *Reminder*\n\nHas the task *${matchedTask.task_details}* assigned to you been completed yet?\n✉️ Reply with Yes or No.`
+    );
+
+    userSessions[`whatsapp:+${matchedRow.phone}`] = {
+      step: 5,
+      task: matchedTask.task_details,
+      assignee: matchedRow.name,
+      taskId: taskId,
+    };
+
+    console.log("userSessions ---> ", userSessions);
+
+    //  else {
+    //       // Stop the cron job if the task no longer needs reminders
+    //       console.log(`Stopping cron job for task ${taskId}`);
+    //       cronJobs.get(taskId)?.stop();
+    //       cronJobs.delete(taskId);
+    //     }
   });
 
   cronJobs.set(taskId, cronJob);
