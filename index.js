@@ -452,7 +452,7 @@ Thank you for providing the task details! Here's a quick summary:
                 session.conversationHistory = [];
 
                 await fetch(
-                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
+                  "http://localhost:8000/update-reminder",
                   {
                     method: "POST",
                     headers: {
