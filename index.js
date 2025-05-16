@@ -255,8 +255,10 @@ async function handleUserInput(userMessage, From) {
 You are a helpful task manager assistant. Respond with a formal tone and
 a step-by-step format.
 Your goal is to guide the user through task assignment:
-- Ask for task details (task, assignee, due date, time and how often to send
-reminder).
+- Ask for task details (task, assignee, due date, time, and reminder preference).
+- The reminder preference can be either:
+  - A recurring reminder (e.g., "every 3 mins", "every 2 hours", "every 1 day").
+  - A one-time reminder (e.g., "once", "one-time").
 - Respond to yes/no inputs appropriately.
 - Follow up if any information is incomplete.
 - Keep the respone concise and structured.
@@ -279,8 +281,10 @@ format to user
 "assignee": "<assignee_name>",
 "dueDate": "<YYYY-MM-DD>",
 "dueTime": "<HH:mm>",
-"reminder_frequency": "<reminder_frequency>"
+"reminder_type": "<recurring|one-time>",
+"reminder_frequency": "<reminder_frequency or null for one-time>"
 }
+- For one-time reminders, set reminder_type to "one-time" and reminder_frequency to null.
 After having all the details you can send the summary of the response so
 that user can have a look at it.
 For due dates:
@@ -369,7 +373,11 @@ Thank you for providing the task details! Here's a quick summary:
 👤 *Assignee:* ${taskDetails.assignee}
 📅 *Due Date:* ${taskDetails.dueDate}
 ⏰ *Due Time:* ${taskDetails.dueTime}
-🔁 *Reminder Frequency:* ${taskDetails.reminder_frequency}`
+🔁 *Reminder:* ${
+    taskDetails.reminder_type === "one-time"
+      ? "One-time at due date"
+      : `Recurring ${taskDetails.reminder_frequency}`
+  }`
         );
       } else {
         sendMessage(From, botReply);
@@ -402,6 +410,7 @@ Thank you for providing the task details! Here's a quick summary:
                 reminder_frequency: taskData.reminder_frequency,
                 reason: null,
                 started_at: getCurrentDate(),
+                reminder_type: taskData.reminder_type || "recurring", // Default to recurring if not specified
               };
 
               const { data: existingData, error: fetchError } = await supabase
@@ -452,7 +461,7 @@ Thank you for providing the task details! Here's a quick summary:
                 session.conversationHistory = [];
 
                 await fetch(
-                  "http://localhost:8000/update-reminder",
+                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
                   {
                     method: "POST",
                     headers: {
@@ -461,6 +470,8 @@ Thank you for providing the task details! Here's a quick summary:
                     body: JSON.stringify({
                       reminder_frequency: taskData.reminder_frequency,
                       taskId: newTask.taskId,
+                      reminder_type: taskData.reminder_type || "recurring",
+                      dueDateTime: dueDateTime, // Pass due date for one-time reminders
                     }),
                   }
                 )
@@ -970,9 +981,9 @@ let isCronRunning = false; // Track if the cron job is active
 const cronJobs = new Map(); // Map to store cron jobs for each task
 
 app.post("/update-reminder", async (req, res) => {
-  const { reminder_frequency, taskId } = req.body;
+  const { reminder_type, reminder_frequency, taskId, dueDateTime } = req.body;
 
-  console.log("inside be update-reminder req.body", reminder_frequency, taskId);
+  console.log("inside be update-reminder req.body", req.body);
 
   if (cronJobs.has(taskId)) {
     console.log(
@@ -981,46 +992,7 @@ app.post("/update-reminder", async (req, res) => {
     return res.status(200).json({ message: "Reminder already scheduled" });
   }
 
-  isCronRunning = true;
-
-  const frequencyPattern =
-    /(\d+)\s*(minute|min|mins|hour|hr|hrs|hours|day|days)s?/;
-  const match = reminder_frequency.match(frequencyPattern);
-
-  console.log("frequencyPattern, match", frequencyPattern, match);
-
-  if (!match) {
-    console.log("Invalid reminder frequency format");
-    return res
-      .status(400)
-      .json({ message: "Invalid reminder frequency format" });
-  }
-
-  const quantity = parseInt(match[1], 10); // Extract the numeric part
-  const unit = match[2]; // Extract the unit (minute, hour, day)
-
-  console.log("quantity, unit", quantity, unit);
-
-  let cronExpression = "";
-
-  // Construct the cron expression based on the unit
-  if (unit === "minute" || unit === "min" || unit === "mins") {
-    cronExpression = `*/${quantity} * * * *`; // Every X minutes
-  } else if (
-    unit === "hour" ||
-    unit == "hours" ||
-    unit === "hrs" ||
-    unit === "hr"
-  ) {
-    cronExpression = `0 */${quantity} * * *`; // Every X hours, at the start of the hour
-  } else if (unit === "day" || unit === "days") {
-    cronExpression = `0 0 */${quantity} * *`; // Every X days, at midnight
-  } else {
-    console.log("Unsupported frequency unit");
-    return res.status(400).json({ message: "Unsupported frequency unit" });
-  }
-
-  const cronJob = cron.schedule(cronExpression, async () => {
+  const sendReminder = async () => {
     console.log(`Checking reminder for task ${taskId}...`);
 
     const { data: groupedData, error } = await supabase
@@ -1038,7 +1010,7 @@ app.post("/update-reminder", async (req, res) => {
 
     if (!matchedRow) {
       console.log(
-        `No matching task found for task ${taskId}. Stopping cron job.`
+        `No matching task found for task ${taskId}. Stopping reminder.`
       );
       cronJobs.get(taskId)?.stop();
       cronJobs.delete(taskId);
@@ -1046,8 +1018,6 @@ app.post("/update-reminder", async (req, res) => {
     }
 
     const matchedTask = matchedRow.tasks.find((task) => task.taskId === taskId);
-
-    console.log("matched task --- >", matchedTask);
 
     if (
       matchedTask.reminder !== "true" ||
@@ -1057,7 +1027,7 @@ app.post("/update-reminder", async (req, res) => {
       !matchedTask.task_details
     ) {
       console.log(
-        `Task ${taskId} doesn't need reminder anymore. Stopping cron job.`
+        `Task ${taskId} doesn't need reminder anymore. Stopping reminder.`
       );
       cronJobs.get(taskId)?.stop();
       cronJobs.delete(taskId);
@@ -1066,9 +1036,10 @@ app.post("/update-reminder", async (req, res) => {
 
     console.log(`Sending reminder to: ${matchedRow.phone} for task ${taskId}`);
 
+    // send TEMPORARY due date and time for one-time reminders
     sendMessage(
       `whatsapp:+${matchedRow.phone}`,
-      `⏰ *Reminder*\n\nHas the task *${matchedTask.task_details}* assigned to you been completed yet?\n✉️ Reply with Yes or No.`
+      `⏰ *Reminder*\n\nHas the task *${matchedTask.task_details}* assigned to you been completed yet?\n✉️ Reply with Yes or No.\n📅 *Due:* ${matchedTask.due_date}`
     );
 
     userSessions[`whatsapp:+${matchedRow.phone}`] = {
@@ -1078,22 +1049,87 @@ app.post("/update-reminder", async (req, res) => {
       taskId: taskId,
     };
 
-    console.log("userSessions ---> ", userSessions);
+    // For one-time reminders, mark task to stop further reminders
+    if (reminder_type === "one-time") {
+      const { data: existingData } = await supabase
+        .from("grouped_tasks")
+        .select("tasks")
+        .eq("name", matchedRow.name)
+        .single();
 
-    //  else {
-    //       // Stop the cron job if the task no longer needs reminders
-    //       console.log(`Stopping cron job for task ${taskId}`);
-    //       cronJobs.get(taskId)?.stop();
-    //       cronJobs.delete(taskId);
-    //     }
-  });
+      const updatedTasks = existingData.tasks.map((task) =>
+        task.taskId === taskId ? { ...task, reminder: "false" } : task
+      );
 
-  cronJobs.set(taskId, cronJob);
-  console.log(
-    `Scheduled reminder for task ${taskId} with frequency ${reminder_frequency}`
-  );
+      await supabase
+        .from("grouped_tasks")
+        .update({ tasks: updatedTasks })
+        .eq("name", matchedRow.name);
 
-  res.status(200).json({ message: "Reminder scheduled" });
+      cronJobs.delete(taskId); // Clean up
+    }
+  };
+
+  if (reminder_type === "one-time") {
+    // Schedule one-time reminder at dueDateTime
+    const now = moment().tz("Asia/Kolkata");
+    const reminderTime = moment.tz(dueDateTime, "YYYY-MM-DD HH:mm", "Asia/Kolkata");
+    const reminderTimeWithOffset = reminderTime.clone().subtract(20, "minutes"); // Subtract 20 minutes
+    const delay = reminderTimeWithOffset.diff(now);
+
+    if (delay <= 0) {
+      console.log(`Task ${taskId} due date is in the past. Sending reminder now.`);
+      await sendReminder();
+      return res.status(200).json({ message: "One-time reminder sent" });
+    }
+
+    setTimeout(async () => {
+      await sendReminder();
+    }, delay);
+
+    cronJobs.set(taskId, { type: "one-time" }); // Store for tracking
+    console.log(`Scheduled one-time reminder for task ${taskId} at ${dueDateTime}`);
+    return res.status(200).json({ message: "One-time reminder scheduled" });
+  } else {
+    // Handle recurring reminders (existing logic)
+    const frequencyPattern =
+      /(\d+)\s*(minute|min|mins|hour|hr|hrs|hours|day|days)s?/;
+    const match = reminder_frequency?.match(frequencyPattern);
+
+    if (!match) {
+      console.log("Invalid reminder frequency format");
+      return res
+        .status(400)
+        .json({ message: "Invalid reminder frequency format" });
+    }
+
+    const quantity = parseInt(match[1], 10);
+    const unit = match[2];
+
+    let cronExpression = "";
+    if (unit === "minute" || unit === "min" || unit === "mins") {
+      cronExpression = `*/${quantity} * * * *`;
+    } else if (
+      unit === "hour" ||
+      unit === "hours" ||
+      unit === "hrs" ||
+      unit === "hr"
+    ) {
+      cronExpression = `0 */${quantity} * * *`;
+    } else if (unit === "day" || unit === "days") {
+      cronExpression = `0 0 */${quantity} * *`;
+    } else {
+      console.log("Unsupported frequency unit");
+      return res.status(400).json({ message: "Unsupported frequency unit" });
+    }
+
+    const cronJob = cron.schedule(cronExpression, sendReminder);
+    cronJobs.set(taskId, cronJob);
+    console.log(
+      `Scheduled recurring reminder for task ${taskId} with frequency ${reminder_frequency}`
+    );
+    return res.status(200).json({ message: "Recurring reminder scheduled" });
+  }
 });
 
 app.listen(port, () => {
