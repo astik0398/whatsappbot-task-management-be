@@ -112,8 +112,6 @@ async function getAllTasks() {
   const { data, error } = await supabase.from("grouped_tasks").select("*");
   if (error) throw error;
 
-  console.log("fetched data--->", data);
-
   return data;
 }
 async function main() {
@@ -144,6 +142,9 @@ async function handleUserInput(userMessage, From) {
 
   assignerMap.push(From);
 
+        console.log('assigner Map===> 0', assignerMap);
+
+
   if (session.step === 5) {
     if (userMessage.toLowerCase() === "yes") {
       const taskId = session.taskId; // Now using taskId instead of task name
@@ -171,6 +172,8 @@ async function handleUserInput(userMessage, From) {
         .from("grouped_tasks")
         .update({ tasks: updatedTasks })
         .eq("name", assignee);
+
+              console.log('assigner Map===> 1', assignerMap);
 
       if (updateError) {
         console.error("Error updating task:", updateError);
@@ -237,6 +240,9 @@ async function handleUserInput(userMessage, From) {
       .from("grouped_tasks")
       .update({ tasks: updatedTasks })
       .eq("name", assignee);
+
+      console.log('assigner Map===> 2', assignerMap);
+      
 
     if (updateError) {
       console.error("Error updating task with reason:", updateError);
@@ -424,17 +430,12 @@ Thank you for providing the task details! Here's a quick summary:
                 console.error("Error fetching existing tasks:", fetchError);
                 sendMessage(From, "Error accessing assignee tasks.");
                 return;
-              }
-
-              console.log('existing-data', existingData);
-              
+              }              
 
               const updatedTasks = existingData.tasks
                 ? [...existingData.tasks, newTask]
                 : [newTask];
 
-              console.log("task-data---->", taskData);
-              console.log("updated-tasks--->", updatedTasks);
 
               const { data, error } = await supabase
                 .from("grouped_tasks")
@@ -461,7 +462,7 @@ Thank you for providing the task details! Here's a quick summary:
                 session.conversationHistory = [];
 
                 await fetch(
-                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
+                  "http://localhost:8000/update-reminder",
                   {
                     method: "POST",
                     headers: {
