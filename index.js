@@ -264,7 +264,8 @@ Your goal is to guide the user through task assignment:
 - Ask for task details (task, assignee, due date, time, and reminder preference).
 - The reminder preference can be either:
   - A recurring reminder (e.g., "every 3 mins", "every 2 hours", "every 1 day").
-  - A one-time reminder (e.g., "once", "one-time").
+  - A one-time reminder (e.g., "one-time on 20th May at 5PM").
+- For one-time reminders, explicitly ask for the reminder date and time (e.g., "When would you like the one-time reminder to be sent? For example, '20th May at 5PM'.").  
 - Respond to yes/no inputs appropriately.
 - Follow up if any information is incomplete.
 - Keep the respone concise and structured.
@@ -272,12 +273,13 @@ Your goal is to guide the user through task assignment:
 
 EXAMPLES: 
 
+- If a user is asked about due date, due time, and reminder preference, and they send only due date and due time, ask for reminder preference.
 - If a user is asked about due date, due time and reminder frequncy, and user sends only due date and due time then it should again ask for reminder frequency and should not ignore that.
+- If a user selects a one-time reminder but doesn't provide a reminder date and time, ask for the reminder date and time explicitly.
 - Similarly if a user is asked about task, assignee and due date but user only only task and due date then it should again ask the user asking about the assignee since they did not sent that.
 
 IMPORTANT:
-- Once all details are collected, return **ONLY** with a JSON object
-which will be used for backend purpose.
+- Once all details are collected, return **ONLY** with a JSON object which will be used for backend purpose.
 - Do **not** include any extra text before or after the JSON.
 - This is only for backend procesing so do **NOT** send this JSON
 format to user
@@ -288,9 +290,13 @@ format to user
 "dueDate": "<YYYY-MM-DD>",
 "dueTime": "<HH:mm>",
 "reminder_type": "<recurring|one-time>",
-"reminder_frequency": "<reminder_frequency or null for one-time>"
+"reminder_frequency": "<reminder_frequency or null for one-time>",
+"reminderDateTime": "<YYYY-MM-DD HH:mm or null for recurring>"
 }
-- For one-time reminders, set reminder_type to "one-time" and reminder_frequency to null.
+- For one-time reminders, set reminder_type to "one-time", reminder_frequency to null, and reminderDateTime to the user-specified reminder date and time in "YYYY-MM-DD HH:mm" format.
+- For recurring reminders, set reminderDateTime to null.
+- Do **not** assume the reminder time is tied to the due date for one-time reminders; it should be based on user input (e.g., "20th May at 5PM").
+
 After having all the details you can send the summary of the response so
 that user can have a look at it.
 For due dates:
@@ -381,7 +387,7 @@ Thank you for providing the task details! Here's a quick summary:
 ⏰ *Due Time:* ${taskDetails.dueTime}
 🔁 *Reminder:* ${
     taskDetails.reminder_type === "one-time"
-      ? "One-time at due date"
+      ? `One-time at ${taskDetails.reminderDateTime}`
       : `Recurring ${taskDetails.reminder_frequency}`
   }`
         );
@@ -417,6 +423,8 @@ Thank you for providing the task details! Here's a quick summary:
                 reason: null,
                 started_at: getCurrentDate(),
                 reminder_type: taskData.reminder_type || "recurring", // Default to recurring if not specified
+                          reminderDateTime: taskData.reminderDateTime || null, // Store reminder date and time
+
               };
 
               const { data: existingData, error: fetchError } = await supabase
@@ -462,7 +470,7 @@ Thank you for providing the task details! Here's a quick summary:
                 session.conversationHistory = [];
 
                 await fetch(
-                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
+                  "https://medicompare-production.up.railway.app/update-reminder",
                   {
                     method: "POST",
                     headers: {
@@ -473,6 +481,7 @@ Thank you for providing the task details! Here's a quick summary:
                       taskId: newTask.taskId,
                       reminder_type: taskData.reminder_type || "recurring",
                       dueDateTime: dueDateTime, // Pass due date for one-time reminders
+                      reminderDateTime: taskData.reminderDateTime
                     }),
                   }
                 )
@@ -982,7 +991,7 @@ let isCronRunning = false; // Track if the cron job is active
 const cronJobs = new Map(); // Map to store cron jobs for each task
 
 app.post("/update-reminder", async (req, res) => {
-  const { reminder_type, reminder_frequency, taskId, dueDateTime } = req.body;
+  const { reminder_type, reminder_frequency, taskId, dueDateTime, reminderDateTime } = req.body;
 
   console.log("inside be update-reminder req.body", req.body);
 
@@ -1074,9 +1083,9 @@ app.post("/update-reminder", async (req, res) => {
   if (reminder_type === "one-time") {
     // Schedule one-time reminder at dueDateTime
     const now = moment().tz("Asia/Kolkata");
-    const reminderTime = moment.tz(dueDateTime, "YYYY-MM-DD HH:mm", "Asia/Kolkata");
-    const reminderTimeWithOffset = reminderTime.clone().subtract(20, "minutes"); // Subtract 20 minutes
-    const delay = reminderTimeWithOffset.diff(now);
+    const reminderTime = moment.tz(reminderDateTime, "YYYY-MM-DD HH:mm", "Asia/Kolkata");
+    // const reminderTimeWithOffset = reminderTime.clone().subtract(20, "minutes");
+    const delay = reminderTime.diff(now);
 
     if (delay <= 0) {
       console.log(`Task ${taskId} due date is in the past. Sending reminder now.`);
