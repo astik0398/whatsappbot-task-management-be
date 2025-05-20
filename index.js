@@ -470,7 +470,7 @@ Thank you for providing the task details! Here's a quick summary:
                 session.conversationHistory = [];
 
                 await fetch(
-                  "https://medicompare-production.up.railway.app/update-reminder",
+                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
                   {
                     method: "POST",
                     headers: {
