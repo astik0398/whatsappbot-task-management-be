@@ -142,8 +142,7 @@ async function handleUserInput(userMessage, From) {
 
   assignerMap.push(From);
 
-        console.log('assigner Map===> 0', assignerMap);
-
+  console.log("assigner Map===> 0", assignerMap);
 
   if (session.step === 5) {
     if (userMessage.toLowerCase() === "yes") {
@@ -173,7 +172,7 @@ async function handleUserInput(userMessage, From) {
         .update({ tasks: updatedTasks })
         .eq("name", assignee);
 
-              console.log('assigner Map===> 1', assignerMap);
+      console.log("assigner Map===> 1", assignerMap);
 
       if (updateError) {
         console.error("Error updating task:", updateError);
@@ -241,8 +240,7 @@ async function handleUserInput(userMessage, From) {
       .update({ tasks: updatedTasks })
       .eq("name", assignee);
 
-      console.log('assigner Map===> 2', assignerMap);
-      
+    console.log("assigner Map===> 2", assignerMap);
 
     if (updateError) {
       console.error("Error updating task with reason:", updateError);
@@ -386,10 +384,10 @@ Thank you for providing the task details! Here's a quick summary:
 📅 *Due Date:* ${taskDetails.dueDate}
 ⏰ *Due Time:* ${taskDetails.dueTime}
 🔁 *Reminder:* ${
-    taskDetails.reminder_type === "one-time"
-      ? `One-time at ${taskDetails.reminderDateTime}`
-      : `Recurring ${taskDetails.reminder_frequency}`
-  }`
+            taskDetails.reminder_type === "one-time"
+              ? `One-time at ${taskDetails.reminderDateTime}`
+              : `Recurring ${taskDetails.reminder_frequency}`
+          }`
         );
       } else {
         sendMessage(From, botReply);
@@ -423,8 +421,7 @@ Thank you for providing the task details! Here's a quick summary:
                 reason: null,
                 started_at: getCurrentDate(),
                 reminder_type: taskData.reminder_type || "recurring", // Default to recurring if not specified
-                          reminderDateTime: taskData.reminderDateTime || null, // Store reminder date and time
-
+                reminderDateTime: taskData.reminderDateTime || null, // Store reminder date and time
               };
 
               const { data: existingData, error: fetchError } = await supabase
@@ -438,12 +435,11 @@ Thank you for providing the task details! Here's a quick summary:
                 console.error("Error fetching existing tasks:", fetchError);
                 sendMessage(From, "Error accessing assignee tasks.");
                 return;
-              }              
+              }
 
               const updatedTasks = existingData.tasks
                 ? [...existingData.tasks, newTask]
                 : [newTask];
-
 
               const { data, error } = await supabase
                 .from("grouped_tasks")
@@ -481,7 +477,7 @@ Thank you for providing the task details! Here's a quick summary:
                       taskId: newTask.taskId,
                       reminder_type: taskData.reminder_type || "recurring",
                       dueDateTime: dueDateTime, // Pass due date for one-time reminders
-                      reminderDateTime: taskData.reminderDateTime
+                      reminderDateTime: taskData.reminderDateTime,
                     }),
                   }
                 )
@@ -649,12 +645,21 @@ Your task is to first analyze the user's message and check if it contains all re
 - Date of the meeting
 - Start time of the meeting (must include AM/PM unless it's clearly 24-hour format)
 - Duration of the meeting
+- Meeting type (one-time or recurring)
+- For recurring meetings: recurrence frequency (e.g., daily, weekly, monthly) and optional end date (e.g., "until 31st Dec 2025")
 
 You MUST check for missing or ambiguous fields. Be especially strict about time ambiguity:
 - If a time like "8" or "tomorrow 8" is mentioned without AM/PM, ask the user to clarify.
 - Never assume AM or PM.
 - Phrases like "8", "5", or "at 3" without a clear indication of AM/PM or 24-hour format should be considered ambiguous.
 - If the year is missing in date of the meeting always assume the year as current year which is ${new Date().getFullYear()}
+
+For recurring meetings:
+- Ask the user if the meeting is one-time or recurring.
+- If recurring, ask for the frequency (e.g., "daily", "weekly", "monthly") and an optional end date (e.g., "until 31st Dec 2025").
+- If the user doesn’t specify an end date, assume the meeting recurs for one year from the start date.
+- Convert recurrence frequency to Google Calendar RRULE format (e.g., "daily" -> "RRULE:FREQ=DAILY", "weekly" -> "RRULE:FREQ=WEEKLY", "monthly" -> "RRULE:FREQ=MONTHLY").
+- If an end date is provided, include it in the RRULE (e.g., "RRULE:FREQ=WEEKLY;UNTIL=20251231T235959Z").
 
 For dynamic date terms:
 - Today's date is ${todayDate}.
@@ -674,6 +679,18 @@ If anything is unclear or missing, respond with a plain text clarification quest
 If the message is clear, contains all the required fields (invitee email, meeting title, date, time with AM/PM, and duration), and there is no ambiguity, proceed to schedule the meeting **immediately** without sending a confirmation or asking the user to respond again.
 
 Do NOT reply with a summary or confirmation message if all the required fields are present and unambiguous. Simply schedule the meeting silently.
+
+When all details are collected, return **ONLY** a JSON object with the following schema:
+{
+  "title": "<meeting_title>",
+  "date": "<YYYY-MM-DD>",
+  "startTime": "<HH:mm>",
+  "durationMinutes": <number>,
+  "attendees": ["<email1>", "<email2>", ...],
+  "meetingType": "<one-time|recurring>",
+  "recurrenceFrequency": "<daily|weekly|monthly|null>",
+  "recurrenceEndDate": "<YYYY-MM-DD|null>"
+}
 `,
             },
           ],
@@ -702,8 +719,23 @@ Do NOT reply with a summary or confirmation message if all the required fields a
                   type: "array",
                   items: { type: "string", format: "email" },
                 },
+                meetingType: {
+                  type: "string",
+                  enum: ["one-time", "recurring"],
+                }, // NEW
+                recurrenceFrequency: {
+                  type: ["string", "null"],
+                  enum: ["daily", "weekly", "monthly", null],
+                }, // NEW
+                recurrenceEndDate: { type: ["string", "null"], format: "date" },
               },
-              required: ["title", "date", "startTime", "durationMinutes"],
+              required: [
+                "title",
+                "date",
+                "startTime",
+                "durationMinutes",
+                "meetingType",
+              ],
             },
           },
         ],
@@ -725,7 +757,16 @@ Do NOT reply with a summary or confirmation message if all the required fields a
       }
 
       const args = JSON.parse(gptReply.function_call.arguments);
-      const { title, date, startTime, durationMinutes, attendees = [] } = args;
+      const {
+        title,
+        date,
+        startTime,
+        durationMinutes,
+        attendees = [],
+        meetingType,
+        recurrenceFrequency,
+        recurrenceEndDate,
+      } = args;
 
       delete sessions[userNumber];
 
@@ -756,6 +797,9 @@ Do NOT reply with a summary or confirmation message if all the required fields a
       console.log("Start Time:", startTime);
       console.log("Duration (mins):", durationMinutes);
       console.log("Attendees:", attendees);
+      console.log("Meeting Type:", meetingType); // NEW
+      console.log("Recurrence Frequency:", recurrenceFrequency); // NEW
+      console.log("Recurrence End Date:", recurrenceEndDate); // NEW
 
       const event = {
         summary: title,
@@ -776,6 +820,26 @@ Do NOT reply with a summary or confirmation message if all the required fields a
         },
       };
 
+      // Add recurrence rule for recurring meetings
+       if (meetingType === "recurring" && recurrenceFrequency) {
+      let rrule = `RRULE:FREQ=${recurrenceFrequency.toUpperCase()}`;
+      if (recurrenceEndDate) {
+        // MODIFIED: Set time to 23:59:59 to include the full end date
+        const endDate = moment.tz(recurrenceEndDate, "YYYY-MM-DD", "Asia/Kolkata")
+          .endOf("day") // Set to 23:59:59 of the end date
+          .format("YYYYMMDDTHHmmss");
+        rrule += `;UNTIL=${endDate}Z`;
+      } else {
+        // Default to one year if no end date is specified
+        const defaultEndDate = startDateTime.clone()
+          .add(1, "year")
+          .endOf("day") // NEW: Set to 23:59:59
+          .format("YYYYMMDDTHHmmss");
+        rrule += `;UNTIL=${defaultEndDate}Z`;
+      }
+      event.recurrence = [rrule];
+    }
+
       let calendarResponse;
       try {
         calendarResponse = await calendar.events.insert({
@@ -792,13 +856,24 @@ Do NOT reply with a summary or confirmation message if all the required fields a
       }
 
       const twiml = new MessagingResponse();
-      twiml.message(
-        `✅ Meeting successfully created! 🎉\n📝 *Title:* ${title}\n📅 *Date:* ${startDateTime.format(
-          "ddd MMM DD YYYY"
-        )}\n🕒 *Time:* ${startDateTime.format("h:mm A")} IST\n🔗 *Link:* ${
-          calendarResponse.data.hangoutLink
-        }`
-      );
+
+      let message = `✅ Meeting successfully created! 🎉\n📝 *Title:* ${title}\n📅 *Date:* ${startDateTime.format(
+        "ddd MMM DD YYYY"
+      )}\n🕒 *Time:* ${startDateTime.format("h:mm A")} IST\n🔗 *Link:* ${
+        calendarResponse.data.hangoutLink
+      }`;
+
+      if (meetingType === "recurring") {
+        message += `\n🔁 *Recurrence:* ${recurrenceFrequency}`;
+        if (recurrenceEndDate) {
+          message += ` until ${moment(recurrenceEndDate).format(
+            "MMM DD, YYYY"
+          )}`;
+        } else {
+          message += ` for one year`;
+        }
+      }
+      twiml.message(message); // MODIFIED
       return res.type("text/xml").send(twiml.toString());
     }
 
@@ -991,7 +1066,13 @@ let isCronRunning = false; // Track if the cron job is active
 const cronJobs = new Map(); // Map to store cron jobs for each task
 
 app.post("/update-reminder", async (req, res) => {
-  const { reminder_type, reminder_frequency, taskId, dueDateTime, reminderDateTime } = req.body;
+  const {
+    reminder_type,
+    reminder_frequency,
+    taskId,
+    dueDateTime,
+    reminderDateTime,
+  } = req.body;
 
   console.log("inside be update-reminder req.body", req.body);
 
@@ -1083,12 +1164,18 @@ app.post("/update-reminder", async (req, res) => {
   if (reminder_type === "one-time") {
     // Schedule one-time reminder at dueDateTime
     const now = moment().tz("Asia/Kolkata");
-    const reminderTime = moment.tz(reminderDateTime, "YYYY-MM-DD HH:mm", "Asia/Kolkata");
+    const reminderTime = moment.tz(
+      reminderDateTime,
+      "YYYY-MM-DD HH:mm",
+      "Asia/Kolkata"
+    );
     // const reminderTimeWithOffset = reminderTime.clone().subtract(20, "minutes");
     const delay = reminderTime.diff(now);
 
     if (delay <= 0) {
-      console.log(`Task ${taskId} due date is in the past. Sending reminder now.`);
+      console.log(
+        `Task ${taskId} due date is in the past. Sending reminder now.`
+      );
       await sendReminder();
       return res.status(200).json({ message: "One-time reminder sent" });
     }
@@ -1098,7 +1185,9 @@ app.post("/update-reminder", async (req, res) => {
     }, delay);
 
     cronJobs.set(taskId, { type: "one-time" }); // Store for tracking
-    console.log(`Scheduled one-time reminder for task ${taskId} at ${dueDateTime}`);
+    console.log(
+      `Scheduled one-time reminder for task ${taskId} at ${dueDateTime}`
+    );
     return res.status(200).json({ message: "One-time reminder scheduled" });
   } else {
     // Handle recurring reminders (existing logic)
