@@ -654,6 +654,11 @@ You MUST check for missing or ambiguous fields. Be especially strict about time 
 - Phrases like "8", "5", or "at 3" without a clear indication of AM/PM or 24-hour format should be considered ambiguous.
 - If the year is missing in date of the meeting always assume the year as current year which is ${new Date().getFullYear()}
 
+For the meeting title:
+- Automatically detect and correct any typos or spelling errors in the title without asking the user for confirmation.
+- Use natural language understanding to infer the intended meaning and correct to standard English.
+- Example: If the user provides "Validte the authtictio proces", correct it to "Validate the authentication process" in the JSON output.
+
 For recurring meetings:
 - Ask the user if the meeting is one-time or recurring.
 - If recurring, ask for the frequency (e.g., "daily", "weekly", "monthly") and an optional end date (e.g., "until 31st Dec 2025").
@@ -674,7 +679,8 @@ For dynamic time terms:
 - If the user says "next X hours" or "in X minutes," calculate the **current time** accordingly (e.g., if the current time is 5:40 PM, then "next 5 hours" will be 10:40 PM).
 
 If anything is unclear or missing, respond with a plain text clarification question. For example:
-"I noticed you said 'tomorrow 8'. Did you mean 8 AM or 8 PM? Please reply with the exact time."
+- "I noticed you said 'tomorrow 8'. Did you mean 8 AM or 8 PM? Please reply with the exact time."
+- For ambiguous time: "I noticed you mentioned '100pm' for the meeting time. Did you mean 1:00 PM? Please provide the exact time in HH:mm AM/PM format or 24-hour format (e.g., 13:00)."
 
 If the message is clear, contains all the required fields (invitee email, meeting title, date, time with AM/PM, and duration), and there is no ambiguity, proceed to schedule the meeting **immediately** without sending a confirmation or asking the user to respond again.
 
