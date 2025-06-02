@@ -174,7 +174,8 @@ async function handleUserInput(userMessage, From) {
       const { error: updateError } = await supabase
         .from("grouped_tasks")
         .update({ tasks: updatedTasks })
-        .eq("name", assignee);
+        .eq("name", assignee)
+        .eq("employerNumber", session.fromNumber)
 
       console.log("assigner Map===> 1", assignerMap);
 
@@ -243,7 +244,9 @@ async function handleUserInput(userMessage, From) {
     const { error: updateError } = await supabase
       .from("grouped_tasks")
       .update({ tasks: updatedTasks })
-      .eq("name", assignee);
+      .eq("name", assignee)
+      .eq("employerNumber", session.fromNumber)
+
 
     console.log("assigner Map===> 2", assignerMap);
 
