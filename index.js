@@ -153,6 +153,7 @@ async function handleUserInput(userMessage, From) {
         .from("grouped_tasks")
         .select("tasks")
         .eq("name", assignee)
+        .eq("employerNumber", From)
         .single();
 
       if (error) {
@@ -219,6 +220,7 @@ async function handleUserInput(userMessage, From) {
       .from("grouped_tasks")
       .select("tasks")
       .eq("name", assignee)
+      .eq("employerNumber", From)
       .single();
 
     if (error) {
