@@ -1162,10 +1162,14 @@ app.post("/update-reminder", async (req, res) => {
 
     // For one-time reminders, mark task to stop further reminders
     if (reminder_type === "one-time") {
+
+            console.log('inside ONE-TIME reminder===>',matchedRow.employerNumber);
+
       const { data: existingData } = await supabase
         .from("grouped_tasks")
         .select("tasks")
         .eq("name", matchedRow.name)
+        .eq("employerNumber", matchedRow.employerNumber)
         .single();
 
               console.log('inside ONE-TIME reminder existing data==>', existingData);
@@ -1180,7 +1184,9 @@ app.post("/update-reminder", async (req, res) => {
       await supabase
         .from("grouped_tasks")
         .update({ tasks: updatedTasks })
-        .eq("name", matchedRow.name);
+        .eq("name", matchedRow.name)
+        .eq("employerNumber", matchedRow.employerNumber)
+
 
       cronJobs.delete(taskId); // Clean up
     }
