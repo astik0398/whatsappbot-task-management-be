@@ -1099,7 +1099,7 @@ app.post("/update-reminder", async (req, res) => {
 
     const { data: groupedData, error } = await supabase
       .from("grouped_tasks")
-      .select("name, phone, tasks");
+      .select("name, phone, tasks, employerNumber");
 
     if (error) {
       console.error("Error fetching grouped_tasks", error);
@@ -1109,6 +1109,9 @@ app.post("/update-reminder", async (req, res) => {
     const matchedRow = groupedData.find((row) =>
       row.tasks?.some((task) => task.taskId === taskId)
     );
+
+    console.log('matchedRow===>', matchedRow);
+    
 
     if (!matchedRow) {
       console.log(
@@ -1120,6 +1123,8 @@ app.post("/update-reminder", async (req, res) => {
     }
 
     const matchedTask = matchedRow.tasks.find((task) => task.taskId === taskId);
+
+        console.log('matchedTask===>', matchedTask);
 
     if (
       matchedTask.reminder !== "true" ||
