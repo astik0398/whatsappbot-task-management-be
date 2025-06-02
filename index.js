@@ -149,6 +149,9 @@ async function handleUserInput(userMessage, From) {
       const taskId = session.taskId; // Now using taskId instead of task name
       const assignee = session.assignee;
 
+      console.log('INSIDE SESSION.SETP 5, USER TYPES YES');
+      console.log('FROM====>', From);
+      
       const { data, error } = await supabase
         .from("grouped_tasks")
         .select("tasks")
