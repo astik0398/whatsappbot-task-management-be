@@ -1168,9 +1168,14 @@ app.post("/update-reminder", async (req, res) => {
         .eq("name", matchedRow.name)
         .single();
 
+              console.log('inside ONE-TIME reminder existing data==>', existingData);
+
       const updatedTasks = existingData.tasks.map((task) =>
         task.taskId === taskId ? { ...task, reminder: "false" } : task
       );
+
+      console.log('inside ONE-TIME reminder', updatedTasks);
+      console.log('inside ONE-TIME reminder===>',matchedRow.employerNumber);
 
       await supabase
         .from("grouped_tasks")
