@@ -190,7 +190,7 @@ async function handleUserInput(userMessage, From) {
           "Thank you! The task has been marked as completed! ✅"
         );
         sendMessage(
-          assignerMap[0],
+          session.fromNumber,
           `The task with ID ${taskId} was completed. ✅`
         );
 
@@ -253,7 +253,7 @@ async function handleUserInput(userMessage, From) {
     } else {
       sendMessage(From, "📤 Your response has been sent to the assigner.");
       sendMessage(
-        assignerMap[0],
+        session.fromNumber,
         `⚠️ *Task Not Completed*\n\nThe task with ID ${taskId} was not completed.\n📝 *Reason:* ${reason.trim()}`
       );
     }
