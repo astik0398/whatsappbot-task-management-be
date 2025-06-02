@@ -156,7 +156,7 @@ async function handleUserInput(userMessage, From) {
         .from("grouped_tasks")
         .select("tasks")
         .eq("name", assignee)
-        .eq("employerNumber", assignerMap[0])
+        .eq("employerNumber", session.fromNumber)
         .single();
 
       if (error) {
@@ -223,7 +223,7 @@ async function handleUserInput(userMessage, From) {
       .from("grouped_tasks")
       .select("tasks")
       .eq("name", assignee)
-      .eq("employerNumber", From)
+      .eq("employerNumber", session.fromNumber)
       .single();
 
     if (error) {
