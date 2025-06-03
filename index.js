@@ -155,7 +155,7 @@ async function handleUserInput(userMessage, From) {
       const { data, error } = await supabase
         .from("grouped_tasks")
         .select("tasks")
-        .eq("name", assignee)
+        .eq("name", assignee.toUpperCase())
         .eq("employerNumber", session.fromNumber)
         .single();
 
@@ -174,7 +174,7 @@ async function handleUserInput(userMessage, From) {
       const { error: updateError } = await supabase
         .from("grouped_tasks")
         .update({ tasks: updatedTasks })
-        .eq("name", assignee)
+        .eq("name", assignee.toUpperCase())
         .eq("employerNumber", session.fromNumber)
 
       console.log("assigner Map===> 1", assignerMap);
@@ -223,7 +223,7 @@ async function handleUserInput(userMessage, From) {
     const { data, error } = await supabase
       .from("grouped_tasks")
       .select("tasks")
-      .eq("name", assignee)
+      .eq("name", assignee.toUpperCase())
       .eq("employerNumber", session.fromNumber)
       .single();
 
@@ -244,7 +244,7 @@ async function handleUserInput(userMessage, From) {
     const { error: updateError } = await supabase
       .from("grouped_tasks")
       .update({ tasks: updatedTasks })
-      .eq("name", assignee)
+      .eq("name", assignee.toUpperCase())
       .eq("employerNumber", session.fromNumber)
 
 
@@ -435,7 +435,7 @@ Thank you for providing the task details! Here's a quick summary:
               const { data: existingData, error: fetchError } = await supabase
                 .from("grouped_tasks")
                 .select("tasks")
-                .eq("name", taskData.assignee)
+                .eq("name", taskData.assignee.toUpperCase())
                 .eq("employerNumber", From)
                 .single();
 
@@ -452,7 +452,7 @@ Thank you for providing the task details! Here's a quick summary:
               const { data, error } = await supabase
                 .from("grouped_tasks")
                 .update({ tasks: updatedTasks })
-                .eq("name", taskData.assignee)
+                .eq("name", taskData.assignee.toUpperCase())
                 .eq("employerNumber", From)
                 .select();
 
@@ -1168,7 +1168,7 @@ app.post("/update-reminder", async (req, res) => {
       const { data: existingData } = await supabase
         .from("grouped_tasks")
         .select("tasks")
-        .eq("name", matchedRow.name)
+        .eq("name", matchedRow.name.toUpperCase())
         .eq("employerNumber", matchedRow.employerNumber)
         .single();
 
@@ -1184,7 +1184,7 @@ app.post("/update-reminder", async (req, res) => {
       await supabase
         .from("grouped_tasks")
         .update({ tasks: updatedTasks })
-        .eq("name", matchedRow.name)
+        .eq("name", matchedRow.name.toUpperCase())
         .eq("employerNumber", matchedRow.employerNumber)
 
 
