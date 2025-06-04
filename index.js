@@ -148,9 +148,9 @@ async function handleUserInput(userMessage, From) {
       const taskId = session.taskId; // Now using taskId instead of task name
       const assignee = session.assignee;
 
-      console.log('INSIDE SESSION.SETP 5, USER TYPES YES', session);
-      console.log('FROM====>', From);
-      
+      console.log("INSIDE SESSION.SETP 5, USER TYPES YES", session);
+      console.log("FROM====>", From);
+
       const { data, error } = await supabase
         .from("grouped_tasks")
         .select("tasks")
@@ -174,7 +174,7 @@ async function handleUserInput(userMessage, From) {
         .from("grouped_tasks")
         .update({ tasks: updatedTasks })
         .eq("name", assignee.toUpperCase())
-        .eq("employerNumber", session.fromNumber)
+        .eq("employerNumber", session.fromNumber);
 
       console.log("assigner Map===> 1", assignerMap);
 
@@ -244,8 +244,7 @@ async function handleUserInput(userMessage, From) {
       .from("grouped_tasks")
       .update({ tasks: updatedTasks })
       .eq("name", assignee.toUpperCase())
-      .eq("employerNumber", session.fromNumber)
-
+      .eq("employerNumber", session.fromNumber);
 
     console.log("assigner Map===> 2", assignerMap);
 
@@ -256,7 +255,9 @@ async function handleUserInput(userMessage, From) {
       sendMessage(From, "📤 Your response has been sent to the assigner.");
       sendMessage(
         session.fromNumber,
-        `⚠️ *Task Not Completed*\n\nThe task *${session.task}* assigned to *${session.assignee}* was not completed.\n📝 *Reason:* ${reason.trim()}`
+        `⚠️ *Task Not Completed*\n\nThe task *${session.task}* assigned to *${
+          session.assignee
+        }* was not completed.\n📝 *Reason:* ${reason.trim()}`
       );
     }
 
@@ -463,11 +464,15 @@ Thank you for providing the task details! Here's a quick summary:
                 console.log("Task successfully added to Supabase.");
                 sendMessage(
                   From,
-                  `📌 *Task Assigned*\n\nA new task, *${taskData.task}* has been assigned to *${taskData.assignee.toUpperCase()}*\n🗓️ *Due Date:* ${dueDateTime}`
+                  `📌 *Task Assigned*\n\nA new task, *${
+                    taskData.task
+                  }* has been assigned to *${taskData.assignee.toUpperCase()}*\n🗓️ *Due Date:* ${dueDateTime}`
                 );
                 sendMessage(
                   `whatsapp:+${assignedPerson.phone}`,
-                  `📬 *New Task Assigned!*\n\nHello *${taskData.assignee.toUpperCase()}*,\nYou've been assigned a new task:\n\n📝 *Task:* *${taskData.task}*\n📅 *Deadline:* ${dueDateTime}`
+                  `📬 *New Task Assigned!*\n\nHello *${taskData.assignee.toUpperCase()}*,\nYou've been assigned a new task:\n\n📝 *Task:* *${
+                    taskData.task
+                  }*\n📅 *Deadline:* ${dueDateTime}`
                 );
                 delete userSessions[From];
                 session.conversationHistory = [];
@@ -670,8 +675,9 @@ For recurring meetings:
 - Ask the user if the meeting is one-time or recurring.
 - If recurring, ask for the frequency (e.g., "daily", "weekly", "monthly") and an optional end date (e.g., "until 31st Dec 2025").
 - If the user doesn’t specify an end date, assume the meeting recurs for one year from the start date.
-- Convert recurrence frequency to Google Calendar RRULE format (e.g., "daily" -> "RRULE:FREQ=DAILY", "weekly" -> "RRULE:FREQ=WEEKLY", "monthly" -> "RRULE:FREQ=MONTHLY").
+- Convert recurrence frequency to Google Calendar RRULE format (e.g., "daily" -> "RRULE:FREQ=DAILY", "weekly" -> "RRULE:FREQ=WEEKLY", "monthly" -> "RRULE:FREQ=MONTHLY", "weekend" -> "RRULE:FREQ=WEEKLY;BYDAY=SA,SU", "weekday" -> "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR").
 - If an end date is provided, include it in the RRULE (e.g., "RRULE:FREQ=WEEKLY;UNTIL=20251231T235959Z").
+- Accept natural language like "every weekend", "on weekends", "every Saturday and Sunday" as frequency 'weekend'
 
 For dynamic date terms:
 - Today's date is ${todayDate}.
@@ -738,7 +744,14 @@ When all details are collected, return **ONLY** a JSON object with the following
                 }, // NEW
                 recurrenceFrequency: {
                   type: ["string", "null"],
-                  enum: ["daily", "weekly", "monthly","weekday", null],
+                  enum: [
+                    "daily",
+                    "weekly",
+                    "monthly",
+                    "weekday",
+                    "weekend",
+                    null,
+                  ],
                 }, // NEW
                 recurrenceEndDate: { type: ["string", "null"], format: "date" },
               },
@@ -835,29 +848,37 @@ When all details are collected, return **ONLY** a JSON object with the following
 
       // Add recurrence rule for recurring meetings
       if (meetingType === "recurring") {
-    if (!recurrenceFrequency || !recurrenceEndDate) {
-      const twiml = new MessagingResponse();
-      twiml.message(
-        `⚠️ ${!recurrenceFrequency ? "Please specify the recurrence frequency (e.g., daily, weekly, monthly, weekday)." : "Please provide an end date for the recurring meeting (e.g., 'until 31st Dec 2025')."}`
-      );
-      return res.type("text/xml").send(twiml.toString());
-    }
+        if (!recurrenceFrequency || !recurrenceEndDate) {
+          const twiml = new MessagingResponse();
+          twiml.message(
+            `⚠️ ${
+              !recurrenceFrequency
+                ? "Please specify the recurrence frequency (e.g., daily, weekly, monthly, weekday)."
+                : "Please provide an end date for the recurring meeting (e.g., 'until 31st Dec 2025')."
+            }`
+          );
+          return res.type("text/xml").send(twiml.toString());
+        }
 
-    let rrule = "";
-    if (recurrenceFrequency === "weekday") {
-      rrule = `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR`;
-    } else {
-      rrule = `RRULE:FREQ=${recurrenceFrequency.toUpperCase()}`;
-    }
-    // Convert recurrenceEndDate to UTC for RRULE
-    const endDate = moment.tz(recurrenceEndDate, "YYYY-MM-DD", "Asia/Kolkata")
-      .endOf("day") // Set to 23:59:59 in Asia/Kolkata
-      .utc() // Convert to UTC
-      .format("YYYYMMDDTHHmmss") + "Z"; // Format as YYYYMMDDTHHMMSSZ
-    rrule += `;UNTIL=${endDate}`;
-    event.recurrence = [rrule];
-    console.log("Generated RRULE:", rrule);
-  }
+        let rrule = "";
+        if (recurrenceFrequency === "weekday") {
+          rrule = `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR`;
+        } else if (recurrenceFrequency === "weekend") {
+          rrule = `RRULE:FREQ=WEEKLY;BYDAY=SA,SU`; // ✅ ADD THIS
+        } else {
+          rrule = `RRULE:FREQ=${recurrenceFrequency.toUpperCase()}`;
+        }
+        // Convert recurrenceEndDate to UTC for RRULE
+        const endDate =
+          moment
+            .tz(recurrenceEndDate, "YYYY-MM-DD", "Asia/Kolkata")
+            .endOf("day") // Set to 23:59:59 in Asia/Kolkata
+            .utc() // Convert to UTC
+            .format("YYYYMMDDTHHmmss") + "Z"; // Format as YYYYMMDDTHHMMSSZ
+        rrule += `;UNTIL=${endDate}`;
+        event.recurrence = [rrule];
+        console.log("Generated RRULE:", rrule);
+      }
 
       let calendarResponse;
       try {
@@ -1118,8 +1139,7 @@ app.post("/update-reminder", async (req, res) => {
       row.tasks?.some((task) => task.taskId === taskId)
     );
 
-    console.log('matchedRow===>', matchedRow);
-    
+    console.log("matchedRow===>", matchedRow);
 
     if (!matchedRow) {
       console.log(
@@ -1132,7 +1152,7 @@ app.post("/update-reminder", async (req, res) => {
 
     const matchedTask = matchedRow.tasks.find((task) => task.taskId === taskId);
 
-        console.log('matchedTask===>', matchedTask);
+    console.log("matchedTask===>", matchedTask);
 
     if (
       matchedTask.reminder !== "true" ||
@@ -1167,8 +1187,7 @@ app.post("/update-reminder", async (req, res) => {
 
     // For one-time reminders, mark task to stop further reminders
     if (reminder_type === "one-time") {
-
-            console.log('inside ONE-TIME reminder===>',matchedRow.employerNumber);
+      console.log("inside ONE-TIME reminder===>", matchedRow.employerNumber);
 
       const { data: existingData } = await supabase
         .from("grouped_tasks")
@@ -1177,21 +1196,20 @@ app.post("/update-reminder", async (req, res) => {
         .eq("employerNumber", matchedRow.employerNumber)
         .single();
 
-              console.log('inside ONE-TIME reminder existing data==>', existingData);
+      console.log("inside ONE-TIME reminder existing data==>", existingData);
 
       const updatedTasks = existingData.tasks.map((task) =>
         task.taskId === taskId ? { ...task, reminder: "false" } : task
       );
 
-      console.log('inside ONE-TIME reminder', updatedTasks);
-      console.log('inside ONE-TIME reminder===>',matchedRow.employerNumber);
+      console.log("inside ONE-TIME reminder", updatedTasks);
+      console.log("inside ONE-TIME reminder===>", matchedRow.employerNumber);
 
       await supabase
         .from("grouped_tasks")
         .update({ tasks: updatedTasks })
         .eq("name", matchedRow.name.toUpperCase())
-        .eq("employerNumber", matchedRow.employerNumber)
-
+        .eq("employerNumber", matchedRow.employerNumber);
 
       cronJobs.delete(taskId); // Clean up
     }
