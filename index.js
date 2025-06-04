@@ -653,7 +653,7 @@ Your task is to first analyze the user's message and check if it contains all re
 - Start time of the meeting (must include AM/PM unless it's clearly 24-hour format)
 - Duration of the meeting
 - Meeting type (one-time or recurring)
-- For recurring meetings: recurrence frequency (e.g., daily, weekly, monthly) and a mandatory end date (e.g., "until 31st Dec 2025")
+- For recurring meetings: recurrence frequency (e.g., daily, weekly, monthly, weekday) and a mandatory end date (e.g., "until 31st Dec 2025")
 
 You MUST check for missing or ambiguous fields. Be especially strict about time ambiguity:
 - If a time like "8" or "tomorrow 8" is mentioned without AM/PM, ask the user to clarify.
@@ -702,7 +702,7 @@ When all details are collected, return **ONLY** a JSON object with the following
   "durationMinutes": <number>,
   "attendees": ["<email1>", "<email2>", ...],
   "meetingType": "<one-time|recurring>",
-  "recurrenceFrequency": "<daily|weekly|monthly|null>",
+  "recurrenceFrequency": "<daily|weekly|monthly|weekday|null>",
   "recurrenceEndDate": "<YYYY-MM-DD|null>"
 }
 `,
@@ -739,7 +739,7 @@ When all details are collected, return **ONLY** a JSON object with the following
                 }, // NEW
                 recurrenceFrequency: {
                   type: ["string", "null"],
-                  enum: ["daily", "weekly", "monthly", null],
+                  enum: ["daily", "weekly", "monthly","weekday", null],
                 }, // NEW
                 recurrenceEndDate: { type: ["string", "null"], format: "date" },
               },
@@ -835,24 +835,30 @@ When all details are collected, return **ONLY** a JSON object with the following
       };
 
       // Add recurrence rule for recurring meetings
-       if (meetingType === "recurring" && recurrenceFrequency) {
-      let rrule = `RRULE:FREQ=${recurrenceFrequency.toUpperCase()}`;
-      if (recurrenceEndDate) {
-        // MODIFIED: Set time to 23:59:59 to include the full end date
-        const endDate = moment.tz(recurrenceEndDate, "YYYY-MM-DD", "Asia/Kolkata")
-          .endOf("day") // Set to 23:59:59 of the end date
-          .format("YYYYMMDDTHHmmss");
-        rrule += `;UNTIL=${endDate}Z`;
-      } else {
-        // Default to one year if no end date is specified
-        const defaultEndDate = startDateTime.clone()
-          .add(1, "year")
-          .endOf("day") // NEW: Set to 23:59:59
-          .format("YYYYMMDDTHHmmss");
-        rrule += `;UNTIL=${defaultEndDate}Z`;
-      }
-      event.recurrence = [rrule];
+      if (meetingType === "recurring") {
+    if (!recurrenceFrequency || !recurrenceEndDate) {
+      const twiml = new MessagingResponse();
+      twiml.message(
+        `⚠️ ${!recurrenceFrequency ? "Please specify the recurrence frequency (e.g., daily, weekly, monthly, weekday)." : "Please provide an end date for the recurring meeting (e.g., 'until 31st Dec 2025')."}`
+      );
+      return res.type("text/xml").send(twiml.toString());
     }
+
+    let rrule = "";
+    if (recurrenceFrequency === "weekday") {
+      rrule = `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR`;
+    } else {
+      rrule = `RRULE:FREQ=${recurrenceFrequency.toUpperCase()}`;
+    }
+    // Convert recurrenceEndDate to UTC for RRULE
+    const endDate = moment.tz(recurrenceEndDate, "YYYY-MM-DD", "Asia/Kolkata")
+      .endOf("day") // Set to 23:59:59 in Asia/Kolkata
+      .utc() // Convert to UTC
+      .format("YYYYMMDDTHHmmss") + "Z"; // Format as YYYYMMDDTHHMMSSZ
+    rrule += `;UNTIL=${endDate}`;
+    event.recurrence = [rrule];
+    console.log("Generated RRULE:", rrule);
+  }
 
       let calendarResponse;
       try {
