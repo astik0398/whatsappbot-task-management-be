@@ -668,7 +668,8 @@ For the meeting title:
 
 For recurring meetings:
 - Ask the user if the meeting is one-time or recurring.
-- Ask for the start date of the meeting explicitly; do not assume the start date.
+- Ask for the start date of the meeting explicitly; do not assume the start date under any circumstance.
+- If the user does not specify a start date, respond with: "You mentioned a recurring meeting. Please provide the start date for the first occurrence (e.g., 'June 15, 2025' or 'next Saturday')."
 - If recurring, ask for the frequency (e.g., "daily", "weekly", "monthly", "weekday") and a mandatory end date (e.g., "until 31st Dec 2025").
 - If the user doesn’t specify an end date, explicitly ask for it; do not assume an end date.
 - Convert recurrence frequency to Google Calendar RRULE format (e.g., "daily" -> "RRULE:FREQ=DAILY", "weekly" -> "RRULE:FREQ=WEEKLY", "monthly" -> "RRULE:FREQ=MONTHLY", "weekday" -> "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR" (indicating Monday through Friday)).
