@@ -191,7 +191,7 @@ async function handleUserInput(userMessage, From) {
         );
         sendMessage(
           session.fromNumber,
-          `The task with ID ${taskId} was completed. ✅`
+          `The task *${session.task}* assigned to *${session.assignee}* was completed. ✅`
         );
 
         cronJobs.get(taskId)?.stop();
@@ -256,7 +256,7 @@ async function handleUserInput(userMessage, From) {
       sendMessage(From, "📤 Your response has been sent to the assigner.");
       sendMessage(
         session.fromNumber,
-        `⚠️ *Task Not Completed*\n\nThe task with ID ${taskId} was not completed.\n📝 *Reason:* ${reason.trim()}`
+        `⚠️ *Task Not Completed*\n\nThe task *${session.task}* assigned to *${session.assignee}* was not completed.\n📝 *Reason:* ${reason.trim()}`
       );
     }
 
@@ -655,11 +655,11 @@ Your task is to first analyze the user's message and check if it contains all re
 - Meeting type (one-time or recurring)
 - For recurring meetings: recurrence frequency (e.g., daily, weekly, monthly, weekday) and a mandatory end date (e.g., "until 31st Dec 2025")
 
-You MUST check for missing or ambiguous fields. Be especially strict about:
-- **Start date**: If the user does not specify a start date (e.g., "June 4, 2025" or "today"), explicitly ask for it (e.g., "Please provide the start date for the meeting (e.g., 'June 4, 2025' or 'today')."). Do not assume a start date.
-- **Time ambiguity**: If a time like "8" or "tomorrow 8" is mentioned without AM/PM, ask the user to clarify. Never assume AM or PM.
+You MUST check for missing or ambiguous fields. Be especially strict about time ambiguity:
+- If a time like "8" or "tomorrow 8" is mentioned without AM/PM, ask the user to clarify.
+- Never assume AM or PM.
 - Phrases like "8", "5", or "at 3" without a clear indication of AM/PM or 24-hour format should be considered ambiguous.
-- If the year is missing in the start date or end date, assume the current year, which is ${new Date().getFullYear()}.
+- If the year is missing in date of the meeting always assume the year as current year which is ${new Date().getFullYear()}
 
 For the meeting title:
 - Automatically detect and correct any typos or spelling errors in the title without asking the user for confirmation.
@@ -668,6 +668,7 @@ For the meeting title:
 
 For recurring meetings:
 - Ask the user if the meeting is one-time or recurring.
+- Ask for the start date of the meeting explicitly; do not assume the start date.
 - If recurring, ask for the frequency (e.g., "daily", "weekly", "monthly", "weekday") and a mandatory end date (e.g., "until 31st Dec 2025").
 - If the user doesn’t specify an end date, explicitly ask for it; do not assume an end date.
 - Convert recurrence frequency to Google Calendar RRULE format (e.g., "daily" -> "RRULE:FREQ=DAILY", "weekly" -> "RRULE:FREQ=WEEKLY", "monthly" -> "RRULE:FREQ=MONTHLY", "weekday" -> "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR" (indicating Monday through Friday)).
