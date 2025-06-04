@@ -387,7 +387,7 @@ User input: ${userMessage}
 Thank you for providing the task details! Here's a quick summary:
 
 📝 *Task:* ${taskDetails.task}
-👤 *Assignee:* ${taskDetails.assignee}
+👤 *Assignee:* ${taskDetails.assignee.toUpperCase()}
 📅 *Due Date:* ${taskDetails.dueDate}
 ⏰ *Due Time:* ${taskDetails.dueTime}
 🔁 *Reminder:* ${
@@ -463,11 +463,11 @@ Thank you for providing the task details! Here's a quick summary:
                 console.log("Task successfully added to Supabase.");
                 sendMessage(
                   From,
-                  `📌 *Task Assigned*\n\nA new task, *${taskData.task}* has been assigned to *${taskData.assignee}*\n🗓️ *Due Date:* ${dueDateTime}`
+                  `📌 *Task Assigned*\n\nA new task, *${taskData.task}* has been assigned to *${taskData.assignee.toUpperCase()}*\n🗓️ *Due Date:* ${dueDateTime}`
                 );
                 sendMessage(
                   `whatsapp:+${assignedPerson.phone}`,
-                  `📬 *New Task Assigned!*\n\nHello *${taskData.assignee}*,\nYou've been assigned a new task:\n\n📝 *Task:* *${taskData.task}*\n📅 *Deadline:* ${dueDateTime}`
+                  `📬 *New Task Assigned!*\n\nHello *${taskData.assignee.toUpperCase()}*,\nYou've been assigned a new task:\n\n📝 *Task:* *${taskData.task}*\n📅 *Deadline:* ${dueDateTime}`
                 );
                 delete userSessions[From];
                 session.conversationHistory = [];
