@@ -864,7 +864,7 @@ When all details are collected, return **ONLY** a JSON object with the following
         if (recurrenceFrequency === "weekday") {
           rrule = `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR`;
         } else if (recurrenceFrequency === "weekend") {
-          rrule = `RRULE:FREQ=WEEKLY;BYDAY=SA,SU`; // ✅ ADD THIS
+          rrule = `RRULE:FREQ=WEEKLY;BYDAY=SA,SU`;
         } else {
           rrule = `RRULE:FREQ=${recurrenceFrequency.toUpperCase()}`;
         }
