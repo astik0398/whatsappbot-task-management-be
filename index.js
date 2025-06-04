@@ -655,11 +655,11 @@ Your task is to first analyze the user's message and check if it contains all re
 - Meeting type (one-time or recurring)
 - For recurring meetings: recurrence frequency (e.g., daily, weekly, monthly, weekday) and a mandatory end date (e.g., "until 31st Dec 2025")
 
-You MUST check for missing or ambiguous fields. Be especially strict about time ambiguity:
-- If a time like "8" or "tomorrow 8" is mentioned without AM/PM, ask the user to clarify.
-- Never assume AM or PM.
+You MUST check for missing or ambiguous fields. Be especially strict about:
+- **Start date**: If the user does not specify a start date (e.g., "June 4, 2025" or "today"), explicitly ask for it (e.g., "Please provide the start date for the meeting (e.g., 'June 4, 2025' or 'today')."). Do not assume a start date.
+- **Time ambiguity**: If a time like "8" or "tomorrow 8" is mentioned without AM/PM, ask the user to clarify. Never assume AM or PM.
 - Phrases like "8", "5", or "at 3" without a clear indication of AM/PM or 24-hour format should be considered ambiguous.
-- If the year is missing in date of the meeting always assume the year as current year which is ${new Date().getFullYear()}
+- If the year is missing in the start date or end date, assume the current year, which is ${new Date().getFullYear()}.
 
 For the meeting title:
 - Automatically detect and correct any typos or spelling errors in the title without asking the user for confirmation.
@@ -686,6 +686,7 @@ For dynamic time terms:
 - If the user says "next X hours" or "in X minutes," calculate the **current time** accordingly (e.g., if the current time is 5:40 PM, then "next 5 hours" will be 10:40 PM).
 
 If anything is unclear or missing, respond with a plain text clarification question. For example:
+- "Please provide the start date for the meeting (e.g., 'June 4, 2025' or 'today')."
 - "I noticed you said 'tomorrow 8'. Did you mean 8 AM or 8 PM? Please reply with the exact time."
 - For ambiguous time: "I noticed you mentioned '100pm' for the meeting time. Did you mean 1:00 PM? Please provide the exact time in HH:mm AM/PM format or 24-hour format (e.g., 13:00)."
 - If the user specifies a recurring meeting with "weekday" but no end date, ask: "You mentioned a weekday recurrence. Please provide the end date (e.g., 'until 31st Dec 2025')."
