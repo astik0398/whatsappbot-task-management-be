@@ -6,7 +6,7 @@ const supabase = require("./supabaseClient");
 require("dotenv").config();
 const cron = require("node-cron");
 const cors = require("cors");
-const { default: axios } = require("axios");
+// const { default: axios } = require("axios");
 const fs = require("fs");
 const FormData = require("form-data"); // to handle file upload
 const moment = require("moment-timezone");
@@ -15,6 +15,9 @@ const MessagingResponse = require("twilio").twiml.MessagingResponse;
 const chrono = require("chrono-node");
 const tinyurl = require("tinyurl");
 const path = require("path"); // NEW: Added path module import
+
+const rax = require("retry-axios");
+const axios = require("axios").default;
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -644,9 +647,6 @@ async function uploadToSupabase(filePath, fileName) {
     return null;
   }
 }
-
-const rax = require("retry-axios");
-const axios = require("axios").default;
 
 // Configure axios with retry logic
 const axiosInstance = axios.create({
