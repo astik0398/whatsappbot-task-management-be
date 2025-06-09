@@ -734,12 +734,33 @@ async function insertBakeryOrder(data, From) {
     data.employerNumber = "whatsapp:+917980018498";
   }
   console.log("data inside supabase insert function---> 2", data);
-  try {
+
+   try {
+    // Step 1: Check if phone exists in grouped_tasks
+    const { data: existingUser, error: fetchError } = await supabase
+      .from("grouped_tasks")
+      .select("id")
+      .eq("phone", data.phone)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error("Error checking existing phone:", fetchError);
+      return false;
+    }
+
+    if (!existingUser) {
+      console.log("No existing user with phone:", data.phone);
+      return false;
+    }
+
+    // Step 2: Insert data if phone matches
     const { error } = await supabase.from("grouped_tasks").insert([data]);
+
     if (error) {
       console.error("Error inserting into bakery table:", error);
       return false;
     }
+
     return true;
   } catch (err) {
     console.error("Unexpected error inserting bakery order:", err);
