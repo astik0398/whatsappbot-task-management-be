@@ -596,6 +596,142 @@ async function transcribeAudioDirectly(mediaUrl) {
   }
 }
 
+// TEXT EXTRACTION FROM THE IMAGE (BAKERY RECEIPT CODE) "STARTS HERE"
+
+async function downloadImage(url, filePath) {
+  try {
+    const response = await axios({
+      url,
+      method: "GET",
+      responseType: "stream",
+      auth: {
+        username: process.env.TWILIO_ACCOUNT_SID,
+        password: process.env.TWILIO_AUTH_TOKEN,
+      },
+    });
+    response.data.pipe(fs.createWriteStream(filePath));
+    return new Promise((resolve, reject) => {
+      response.data.on("end", () => resolve(true));
+      response.data.on("error", (err) => reject(err));
+    });
+  } catch (error) {
+    console.error("Error downloading image:", error);
+    return false;
+  }
+}
+
+async function uploadToSupabase(filePath, fileName) {
+  try {
+    const fileBuffer = fs.readFileSync(filePath);
+    const { data, error } = await supabase.storage
+      .from("images")
+      .upload(`uploads/${fileName}`, fileBuffer, {
+        contentType: `image/${fileName.split(".").pop()}`,
+        upsert: false,
+      });
+    if (error) {
+      console.error("Supabase upload error:", error);
+      return null;
+    }
+    const { data: publicUrlData } = supabase.storage
+      .from("images")
+      .getPublicUrl(`uploads/${fileName}`);
+    console.log("Supabase public URL:", publicUrlData.publicUrl);
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error("Error uploading to Supabase:", error);
+    return null;
+  }
+}
+
+async function extractTextFromImage(imageUrl) {
+  console.log("inside extractTextFromImage func");
+  try {
+    const response = await axios.post(
+      "https://app.wordware.ai/api/released-app/dedd9680-4a3b-4eb2-a3bc-fface48c4322/run",
+      {
+        inputs: {
+          new_input_1: {
+            type: "image",
+            image_url: imageUrl,
+          },
+        },
+        version: "^2.6",
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.WORDWARE_API_KEY}`,
+        },
+      }
+    );
+    const newGen = await extractNewGeneration(response.data);
+    return newGen;
+  } catch (error) {
+    console.error("Error extracting text from image:", error.message);
+    if (error.response) {
+      console.error(
+        "Wordware error details:",
+        JSON.stringify(error.response.data, null, 2)
+      );
+    }
+    return null;
+  }
+}
+
+function extractNewGeneration(rawResponse) {
+  console.log("inside extracted new gen...");
+  const lines = rawResponse.trim().split("\n");
+  for (const line of lines) {
+    try {
+      const json = JSON.parse(line);
+      if (
+        json.type === "chunk" &&
+        json.value &&
+        json.value.output &&
+        json.value.output.new_generation
+      ) {
+        console.log(
+          "json.value.output.new_generation;",
+          json.value.output.new_generation
+        );
+        return json.value.output.new_generation;
+      }
+    } catch (err) {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function insertBakeryOrder(data, From) {
+  console.log("data inside supabase insert function---> 1", data);
+  if (From === "whatsapp:+918013356481") {
+    data.userId = "253d8af9-aa41-4249-8d8e-e85acd464650";
+    data.employerNumber = "whatsapp:+918013356481";
+  } else if (From === "whatsapp:+14155839275") {
+    data.userId = "c20d5529-7afc-400a-83fb-84989f5a03ee";
+    data.employerNumber = "whatsapp:+14155839275";
+  } else if (From === "whatsapp:+917980018498") {
+    data.userId = "ec579488-8a1c-4a72-8e0d-8fc68c4622b6";
+    data.employerNumber = "whatsapp:+917980018498";
+  }
+  console.log("data inside supabase insert function---> 2", data);
+  try {
+    const { error } = await supabase.from("grouped_tasks").insert([data]);
+    if (error) {
+      console.error("Error inserting into bakery table:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Unexpected error inserting bakery order:", err);
+    return false;
+  }
+}
+
+// TEXT EXTRACTION FROM THE IMAGE (BAKERY RECEIPT CODE) "ENDS HERE"
+
 async function makeTwilioRequest() {
   app.post("/whatsapp", async (req, res) => {
     const { Body, From } = req.body;
@@ -611,6 +747,80 @@ async function makeTwilioRequest() {
     let incomingMsg = Body.trim();
 
     const userNumber = req.body.From;
+
+     if (numMedia > 0 && mediaUrl && mediaType?.startsWith("image/")) {
+      const twiml = new MessagingResponse();
+      const startTime = Date.now();
+
+      try {
+        const fileName = `image_${Date.now()}.${mediaType.split("/")[1]}`;
+        const filePath = path.join(__dirname, "Uploads", fileName);
+
+        // Ensure uploads directory exists
+        fs.mkdirSync(path.join(__dirname, "Uploads"), { recursive: true });
+
+        // Download the image from Twilio
+        const downloadSuccess = await downloadImage(mediaUrl, filePath);
+        console.log(
+          `Image download ${downloadSuccess ? "successful" : "failed"}`
+        );
+
+        if (downloadSuccess) {
+          // Upload to Supabase and get public URL
+          const supabaseUrl = await uploadToSupabase(filePath, fileName);
+          if (supabaseUrl) {
+            console.log("inside supabaseURL condition--->");
+            const extractedText = await extractTextFromImage(supabaseUrl);
+            console.log("extractedText====>", extractedText);
+
+            if (extractedText) {
+              console.log("inside extractedText condition--->");
+              try {
+                const cleanJson = extractedText
+                  .replace(/```json\s*/i, "")
+                  .replace(/```$/, "")
+                  .trim();
+                console.log("cleaned json", cleanJson);
+                const parsed = JSON.parse(cleanJson);
+                console.log("parsed====> ", parsed);
+
+                const success = await insertBakeryOrder(parsed, From);
+                if (success) {
+                  twiml.message(`Image received and order stored successfully.`);
+                } else {
+                  twiml.message(`Image received, but failed to store order.`);
+                }
+              } catch (e) {
+                console.error("Failed to parse or insert extracted text:", e);
+                twiml.message(
+                  `Image received, but failed to process order data.`
+                );
+              }
+            } else {
+              twiml.message("Image received, but failed to extract text.");
+            }
+          } else {
+            twiml.message("Image received, but failed to upload to Supabase.");
+          }
+
+          // Clean up local file
+          fs.unlinkSync(filePath);
+        } else {
+          twiml.message("Image received, but failed to download.");
+        }
+
+        res.setHeader("Content-Type", "text/xml");
+        res.status(200).send(twiml.toString());
+        console.log(`Response sent successfully in ${Date.now() - startTime}ms`);
+        return;
+      } catch (error) {
+        console.error("Error processing image webhook:", error);
+        if (!res.headersSent) {
+          res.status(500).send("Internal Server Error");
+        }
+        return;
+      }
+    }
 
     if (
       incomingMsg.toLowerCase().includes("schedule") ||
