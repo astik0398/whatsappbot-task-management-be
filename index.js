@@ -741,6 +741,7 @@ async function insertBakeryOrder(data, From) {
       .from("grouped_tasks")
       .select("id")
       .eq("phone", data.phone)
+      .eq("employerNumber", From)
       .maybeSingle();
 
     if (fetchError) {
