@@ -741,6 +741,7 @@ async function makeTwilioRequest() {
 
     const mediaUrl = req.body.MediaUrl0;
     const mediaType = req.body.MediaContentType0;
+    const numMedia = parseInt(req.body.NumMedia || "0");
 
     let userMessage = Body.trim();
 
