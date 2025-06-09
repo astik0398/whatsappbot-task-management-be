@@ -645,39 +645,55 @@ async function uploadToSupabase(filePath, fileName) {
   }
 }
 
-async function extractTextFromImage(imageUrl) {
+async function extractTextFromImage(imageUrl, maxRetries = 3, retryDelay = 1000) {
   console.log("inside extractTextFromImage func");
-  try {
-    const response = await axios.post(
-      "https://app.wordware.ai/api/released-app/dedd9680-4a3b-4eb2-a3bc-fface48c4322/run",
-      {
-        inputs: {
-          new_input_1: {
-            type: "image",
-            image_url: imageUrl,
+  let attempts = 0;
+
+  while (attempts < maxRetries) {
+    try {
+      const response = await axios.post(
+        "https://app.wordware.ai/api/released-app/dedd9680-4a3b-4eb2-a3bc-fface48c4322/run",
+        {
+          inputs: {
+            new_input_1: {
+              type: "image",
+              image_url: imageUrl,
+            },
           },
+          version: "^2.8",
         },
-        version: "^2.8",
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.WORDWARE_API_KEY_EXTRACT}`,
-        },
-      }
-    );
-    const newGen = await extractNewGeneration(response.data);
-    return newGen;
-  } catch (error) {
-    console.error("Error extracting text from image:", error.message);
-    if (error.response) {
-      console.error(
-        "Wordware error details:",
-        JSON.stringify(error.response.data, null, 2)
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.WORDWARE_API_KEY_EXTRACT}`,
+          },
+        }
       );
+      const newGen = await extractNewGeneration(response.data);
+      if (newGen) {
+        return newGen; // Success, return the extracted text
+      } else {
+        attempts++;
+        console.log(`Attempt ${attempts} failed, extractedText is null. Retrying...`);
+        if (attempts < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelay)); // Wait before retrying
+        }
+      }
+    } catch (error) {
+      console.error(`Error extracting text from image (Attempt ${attempts + 1}):`, error.message);
+      if (error.response) {
+        console.error("Wordware error details:", JSON.stringify(error.response.data, null, 2));
+      }
+      attempts++;
+      if (attempts < maxRetries) {
+        console.log(`Retrying after error... Attempt ${attempts + 1}`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay)); // Wait before retrying
+      }
     }
-    return null;
   }
+
+  console.error(`Failed to extract text after ${maxRetries} attempts.`);
+  return null; // Return null if all retries fail
 }
 
 function extractNewGeneration(rawResponse) {
