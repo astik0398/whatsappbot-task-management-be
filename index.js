@@ -756,8 +756,8 @@ async function insertBakeryOrder(data, From) {
 
     // Step 2: Append to tasks and update
     const updatedTasks = Array.isArray(existingUser.tasks)
-      ? [...existingUser.tasks, data]
-      : [data];
+  ? [...existingUser.tasks, ...data.tasks]
+  : [...data.tasks];
 
     const { error: updateError } = await supabase
       .from("grouped_tasks")
