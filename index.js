@@ -645,10 +645,34 @@ async function uploadToSupabase(filePath, fileName) {
   }
 }
 
+const rax = require("retry-axios");
+const axios = require("axios").default;
+
+// Configure axios with retry logic
+const axiosInstance = axios.create({
+  timeout: 30000, // 30-second timeout
+});
+axiosInstance.defaults.raxConfig = {
+  retry: 3, // Retry up to 3 times
+  retryDelay: 1000, // 1-second delay between retries
+  httpMethodsToRetry: ["POST", "HEAD"], // Retry POST and HEAD
+  statusCodesToRetry: [[429, 429], [500, 599]], // Retry on rate limit or server errors
+};
+rax.attach(axiosInstance);
+
 async function extractTextFromImage(imageUrl) {
-  console.log("inside extractTextFromImage func");
+  console.log(`Starting text extraction for image URL: ${imageUrl}`);
   try {
-    const response = await axios.post(
+    // Validate Supabase URL
+    try {
+      const urlCheck = await axiosInstance.head(imageUrl, { timeout: 5000 });
+      console.log(`Supabase URL accessibility check: ${urlCheck.status}`);
+    } catch (urlError) {
+      console.error(`Supabase URL inaccessible: ${urlError.message}`);
+      return null; // Fail early if URL is not accessible
+    }
+
+    const response = await axiosInstance.post(
       "https://app.wordware.ai/api/released-app/dedd9680-4a3b-4eb2-a3bc-fface48c4322/run",
       {
         inputs: {
@@ -657,24 +681,34 @@ async function extractTextFromImage(imageUrl) {
             image_url: imageUrl,
           },
         },
-        version: "^2.8",
+        version: "^2.6",
       },
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.WORDWARE_API_KEY_EXTRACT}`,
+          Authorization: `Bearer ${process.env.WORDWARE_API_KEY}`,
         },
       }
     );
+    console.log(`Wordware API response status: ${response.status}`);
+    console.log(`Wordware API response data:`, response.data);
+
     const newGen = await extractNewGeneration(response.data);
+    if (!newGen) {
+      console.error("Failed to extract new_generation from API response");
+    } else {
+      console.log(`Extracted new_generation: ${newGen}`);
+    }
     return newGen;
   } catch (error) {
-    console.error("Error extracting text from image:", error.message);
+    console.error(`Error extracting text from image: ${error.message}`);
     if (error.response) {
-      console.error(
-        "Wordware error details:",
-        JSON.stringify(error.response.data, null, 2)
-      );
+      console.error("Wordware error details:", JSON.stringify(error.response.data, null, 2));
+      console.error(`Wordware response status: ${error.response.status}`);
+    } else if (error.request) {
+      console.error("No response received from Wordware API");
+    } else {
+      console.error("Request setup error:", error.message);
     }
     return null;
   }
