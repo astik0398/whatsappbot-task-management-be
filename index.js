@@ -802,6 +802,8 @@ async function makeTwilioRequest() {
                 );
               }
             } else {
+                            console.log("NOT inside extractedText condition--->");
+
               twiml.message("Image received, but failed to extract text.");
             }
           } else {
