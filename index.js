@@ -662,7 +662,7 @@ async function extractTextFromImage(imageUrl) {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.WORDWARE_API_KEY_EXTRACT}`,
+          Authorization: `Bearer ${process.env.WORDWARE_API_KEY}`,
         },
       }
     );
