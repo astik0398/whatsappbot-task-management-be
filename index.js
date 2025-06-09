@@ -6,7 +6,6 @@ const supabase = require("./supabaseClient");
 require("dotenv").config();
 const cron = require("node-cron");
 const cors = require("cors");
-// const { default: axios } = require("axios");
 const fs = require("fs");
 const FormData = require("form-data"); // to handle file upload
 const moment = require("moment-timezone");
@@ -17,7 +16,7 @@ const tinyurl = require("tinyurl");
 const path = require("path"); // NEW: Added path module import
 
 const rax = require("retry-axios");
-const axios = require("axios").default;
+const { default: axios } = require("axios");
 
 const app = express();
 const port = process.env.PORT || 8000;
