@@ -735,11 +735,11 @@ async function insertBakeryOrder(data, From) {
   }
   console.log("data inside supabase insert function---> 2", data);
 
-   try {
-    // Step 1: Check if phone exists in grouped_tasks
+  try {
+    // Step 1: Check for existing record
     const { data: existingUser, error: fetchError } = await supabase
       .from("grouped_tasks")
-      .select("id")
+      .select("id, tasks")
       .eq("phone", data.phone)
       .eq("employerNumber", From)
       .maybeSingle();
@@ -754,11 +754,18 @@ async function insertBakeryOrder(data, From) {
       return false;
     }
 
-    // Step 2: Insert data if phone matches
-    const { error } = await supabase.from("grouped_tasks").insert([data]);
+    // Step 2: Append to tasks and update
+    const updatedTasks = Array.isArray(existingUser.tasks)
+      ? [...existingUser.tasks, data]
+      : [data];
 
-    if (error) {
-      console.error("Error inserting into bakery table:", error);
+    const { error: updateError } = await supabase
+      .from("grouped_tasks")
+      .update({ tasks: updatedTasks })
+      .eq("id", existingUser.id);
+
+    if (updateError) {
+      console.error("Error updating existing record:", updateError);
       return false;
     }
 
