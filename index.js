@@ -657,7 +657,7 @@ async function extractTextFromImage(imageUrl) {
             image_url: imageUrl,
           },
         },
-        version: "^2.7",
+        version: "^2.8",
       },
       {
         headers: {
@@ -750,7 +750,7 @@ async function makeTwilioRequest() {
 
     const userNumber = req.body.From;
 
-     if (numMedia > 0 && mediaUrl && mediaType?.startsWith("image/")) {
+    if (numMedia > 0 && mediaUrl && mediaType?.startsWith("image/")) {
       const twiml = new MessagingResponse();
       const startTime = Date.now();
 
@@ -788,12 +788,17 @@ async function makeTwilioRequest() {
 
                 const success = await insertBakeryOrder(parsed, From);
 
-                console.log('success inside bakery receipt==>', success);
-                
+                console.log("success inside bakery receipt==>", success);
+
+                console.log("Order details extracted successfully:", success);
+
                 if (success) {
-                  twiml.message(`Image received and details stored successfully.`);
+                  sendMessage(From, "Order details extracted successfully");
+                  // twiml.message(`Image received and details stored successfully.`);
                 } else {
-                  twiml.message(`Image received, but failed to store details.`);
+                  sendMessage(From, "Failed to extract order details");
+
+                  // twiml.message(`Image received, but failed to store details.`);
                 }
               } catch (e) {
                 console.error("Failed to parse or insert extracted text:", e);
@@ -802,7 +807,7 @@ async function makeTwilioRequest() {
                 );
               }
             } else {
-                            console.log("NOT inside extractedText condition--->");
+              console.log("NOT inside extractedText condition--->");
 
               twiml.message("Image received, but failed to extract text.");
             }
@@ -818,7 +823,9 @@ async function makeTwilioRequest() {
 
         res.setHeader("Content-Type", "text/xml");
         res.status(200).send(twiml.toString());
-        console.log(`Response sent successfully in ${Date.now() - startTime}ms`);
+        console.log(
+          `Response sent successfully in ${Date.now() - startTime}ms`
+        );
         return;
       } catch (error) {
         console.error("Error processing image webhook:", error);
