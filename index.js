@@ -366,7 +366,7 @@ User input: ${userMessage}
           return;
         }
 
-        console.log("FROM NUMBER===>", From);
+        console.log("FROM NUMBER===>", From); 
 
         console.log("matchingAssignees====>", matchingAssignees);
 
@@ -645,7 +645,11 @@ async function uploadToSupabase(filePath, fileName) {
   }
 }
 
-async function extractTextFromImage(imageUrl, maxRetries = 3, retryDelay = 1000) {
+async function extractTextFromImage(
+  imageUrl,
+  maxRetries = 3,
+  retryDelay = 1000
+) {
   console.log("inside extractTextFromImage func");
   let attempts = 0;
 
@@ -674,15 +678,23 @@ async function extractTextFromImage(imageUrl, maxRetries = 3, retryDelay = 1000)
         return newGen; // Success, return the extracted text
       } else {
         attempts++;
-        console.log(`Attempt ${attempts} failed, extractedText is null. Retrying...`);
+        console.log(
+          `Attempt ${attempts} failed, extractedText is null. Retrying...`
+        );
         if (attempts < maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, retryDelay)); // Wait before retrying
         }
       }
     } catch (error) {
-      console.error(`Error extracting text from image (Attempt ${attempts + 1}):`, error.message);
+      console.error(
+        `Error extracting text from image (Attempt ${attempts + 1}):`,
+        error.message
+      );
       if (error.response) {
-        console.error("Wordware error details:", JSON.stringify(error.response.data, null, 2));
+        console.error(
+          "Wordware error details:",
+          JSON.stringify(error.response.data, null, 2)
+        );
       }
       attempts++;
       if (attempts < maxRetries) {
@@ -756,8 +768,8 @@ async function insertBakeryOrder(data, From) {
 
     // Step 2: Append to tasks and update
     const updatedTasks = Array.isArray(existingUser.tasks)
-  ? [...existingUser.tasks, ...data.tasks]
-  : [...data.tasks];
+      ? [...existingUser.tasks, ...data.tasks]
+      : [...data.tasks];
 
     const { error: updateError } = await supabase
       .from("grouped_tasks")
@@ -838,9 +850,50 @@ async function makeTwilioRequest() {
                 console.log("Order details extracted successfully:", success);
 
                 if (success) {
-                  sendMessage(From, "Order details extracted successfully");
-                  // twiml.message(`Image received and details stored successfully.`);
-                } else {
+              // Initialize session with extracted task details
+              userSessions[From] = {
+                step: 1, // Start at step 1 for task detail collection
+                task: parsed.tasks[0]?.task_details || "Bakery Order",
+                assignee: parsed.name || "Unknown Assignee",
+                dueDate: parsed.tasks[0]?.due_date?.split(" ")[0] || "", // Extract date if available
+                dueTime: parsed.tasks[0]?.due_date?.split(" ")[1] || "", // Extract time if available
+                reminder_type: parsed.tasks[0]?.reminder_type || "",
+                reminder_frequency: parsed.tasks[0]?.reminder_frequency || null,
+                reminderDateTime: parsed.tasks[0]?.reminderDateTime || null,
+                assignerNumber: From,
+                conversationHistory: [],
+                taskId: parsed.tasks[0]?.taskId || Date.now().toString(),
+                fromImage: true, // Flag to indicate task originated from an image
+              };
+
+              // Create a JSON string mimicking user input for handleUserInput
+              const imageTaskDetails = {
+                task: userSessions[From].task,
+                assignee: userSessions[From].assignee,
+                dueDate: userSessions[From].dueDate,
+                dueTime: userSessions[From].dueTime,
+                reminder_type: userSessions[From].reminder_type,
+                reminder_frequency: userSessions[From].reminder_frequency,
+                reminderDateTime: userSessions[From].reminderDateTime,
+              };
+
+              // Send initial message to user
+              sendMessage(
+                From,
+                "Order details extracted successfully! 🎉\n\n Few details are still missing!)"
+              );
+
+              // Pass the extracted details to handleUserInput as JSON
+              await handleUserInput(JSON.stringify(imageTaskDetails), From);
+
+              // Respond to Twilio to acknowledge the message
+              res.setHeader("Content-Type", "text/xml");
+              res.status(200).send(twiml.toString());
+              console.log(
+                `Response sent successfully in ${Date.now() - startTime}ms`
+              );
+              return;
+            } else {
                   sendMessage(From, "Failed to extract order details");
 
                   // twiml.message(`Image received, but failed to store details.`);
