@@ -657,7 +657,7 @@ async function extractTextFromImage(imageUrl) {
             image_url: imageUrl,
           },
         },
-        version: "^2.6",
+        version: "^2.7",
       },
       {
         headers: {
@@ -787,15 +787,18 @@ async function makeTwilioRequest() {
                 console.log("parsed====> ", parsed);
 
                 const success = await insertBakeryOrder(parsed, From);
+
+                console.log('success inside bakery receipt==>', success);
+                
                 if (success) {
-                  twiml.message(`Image received and order stored successfully.`);
+                  twiml.message(`Image received and details stored successfully.`);
                 } else {
-                  twiml.message(`Image received, but failed to store order.`);
+                  twiml.message(`Image received, but failed to store details.`);
                 }
               } catch (e) {
                 console.error("Failed to parse or insert extracted text:", e);
                 twiml.message(
-                  `Image received, but failed to process order data.`
+                  `Image received, but failed to process order details.`
                 );
               }
             } else {
