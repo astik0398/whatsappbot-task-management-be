@@ -872,7 +872,7 @@ async function makeTwilioRequest() {
               // Send initial message to user
               sendMessage(
                 From,
-                "Order details extracted successfully! 🎉)"
+                "Order details extracted successfully! 🎉"
               );
 
               // Pass the extracted details to handleUserInput as JSON
@@ -886,9 +886,7 @@ async function makeTwilioRequest() {
               );
               return;
             } else {
-                  sendMessage(From, "Failed to extract order details");
-
-                  // twiml.message(`Image received, but failed to store details.`);
+                  sendMessage(From, "Error: Could not find assignee.");
                 }
               } catch (e) {
                 console.error("Failed to parse or insert extracted text:", e);
@@ -987,8 +985,8 @@ For the meeting title:
 
 For recurring meetings:
 - Ask the user if the meeting is one-time or recurring.
-- If recurring, ask for the frequency (e.g., "daily", "weekly", "monthly") and an optional end date (e.g., "until 31st Dec 2025").
-- If the user doesn’t specify an end date, assume the meeting recurs for one year from the start date.
+- If recurring, always ask for the frequency (e.g., "daily", "weekly", "monthly") and a mandatory end date (e.g., "until 31st Dec 2025"). Do not proceed without a valid end date.
+- If the user doesn’t specify an end date, ask them for it. Do not assume one year. Do not proceed until a valid end date is given.
 - Convert recurrence frequency to Google Calendar RRULE format (e.g., "daily" -> "RRULE:FREQ=DAILY", "weekly" -> "RRULE:FREQ=WEEKLY", "monthly" -> "RRULE:FREQ=MONTHLY", "weekend" -> "RRULE:FREQ=WEEKLY;BYDAY=SA,SU", "weekday" -> "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR").
 - If an end date is provided, include it in the RRULE (e.g., "RRULE:FREQ=WEEKLY;UNTIL=20251231T235959Z").
 - Accept natural language like "every weekend", "on weekends", "every Saturday and Sunday" as frequency 'weekend'
