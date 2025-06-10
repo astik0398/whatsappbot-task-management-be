@@ -412,6 +412,8 @@ Thank you for providing the task details! Here's a quick summary:
           );
           console.log("assignedPerson--->", assignedPerson);
           console.log("taskData", taskData);
+          console.log('session after adding all details===>', session);
+          
           if (assignedPerson) {
             let dueDateTime = `${taskData.dueDate} ${taskData.dueTime}`;
             if (
@@ -431,6 +433,7 @@ Thank you for providing the task details! Here's a quick summary:
                 started_at: getCurrentDate(),
                 reminder_type: taskData.reminder_type || "recurring", // Default to recurring if not specified
                 reminderDateTime: taskData.reminderDateTime || null, // Store reminder date and time
+                                notes: session.notes || null, // Include notes from session
               };
 
               const { data: existingData, error: fetchError } = await supabase
@@ -766,28 +769,13 @@ async function insertBakeryOrder(data, From) {
       return false;
     }
 
-    // Step 2: Append to tasks and update
-    const updatedTasks = Array.isArray(existingUser.tasks)
-      ? [...existingUser.tasks, ...data.tasks]
-      : [...data.tasks];
-
-    const { error: updateError } = await supabase
-      .from("grouped_tasks")
-      .update({ tasks: updatedTasks })
-      .eq("id", existingUser.id);
-
-    if (updateError) {
-      console.error("Error updating existing record:", updateError);
-      return false;
-    }
-
+    // Validation successful; do not insert tasks yet
     return true;
   } catch (err) {
-    console.error("Unexpected error inserting bakery order:", err);
+    console.error("Unexpected error validating bakery order:", err);
     return false;
   }
 }
-
 // TEXT EXTRACTION FROM THE IMAGE (BAKERY RECEIPT CODE) "ENDS HERE"
 
 async function makeTwilioRequest() {
@@ -860,6 +848,7 @@ async function makeTwilioRequest() {
                 reminder_type: parsed.tasks[0]?.reminder_type || "",
                 reminder_frequency: parsed.tasks[0]?.reminder_frequency || null,
                 reminderDateTime: parsed.tasks[0]?.reminderDateTime || null,
+                notes: parsed.tasks[0]?.notes || null, // Store notes from tasks
                 assignerNumber: From,
                 conversationHistory: [],
                 taskId: parsed.tasks[0]?.taskId || Date.now().toString(),
@@ -875,12 +864,13 @@ async function makeTwilioRequest() {
                 reminder_type: userSessions[From].reminder_type,
                 reminder_frequency: userSessions[From].reminder_frequency,
                 reminderDateTime: userSessions[From].reminderDateTime,
+                                notes: userSessions[From].notes, // Include notes in JSON
               };
 
               // Send initial message to user
               sendMessage(
                 From,
-                "Order details extracted successfully! 🎉\n\n Few details are still missing!)"
+                "Order details extracted successfully! 🎉)"
               );
 
               // Pass the extracted details to handleUserInput as JSON
