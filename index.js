@@ -430,7 +430,7 @@ Thank you for providing the task details! Here's a quick summary:
                 reminder: "true",
                 reminder_frequency: taskData.reminder_frequency,
                 reason: null,
-                started_at: getCurrentDate(),
+                started_at: session.started_at || getCurrentDate(), 
                 reminder_type: taskData.reminder_type || "recurring", // Default to recurring if not specified
                 reminderDateTime: taskData.reminderDateTime || null, // Store reminder date and time
                                 notes: session.notes || null, // Include notes from session
@@ -849,6 +849,7 @@ async function makeTwilioRequest() {
                 reminder_frequency: parsed.tasks[0]?.reminder_frequency || null,
                 reminderDateTime: parsed.tasks[0]?.reminderDateTime || null,
                 notes: parsed.tasks[0]?.notes || null, // Store notes from tasks
+                started_at: parsed.tasks[0]?.started_at || null, // Store started_at from tasks
                 assignerNumber: From,
                 conversationHistory: [],
                 taskId: parsed.tasks[0]?.taskId || Date.now().toString(),
@@ -865,6 +866,7 @@ async function makeTwilioRequest() {
                 reminder_frequency: userSessions[From].reminder_frequency,
                 reminderDateTime: userSessions[From].reminderDateTime,
                                 notes: userSessions[From].notes, // Include notes in JSON
+                                started_at: userSessions[From].started_at, // Include started_at in JSON
               };
 
               // Send initial message to user
