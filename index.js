@@ -43,7 +43,7 @@ const calendar = google.calendar({ version: "v3", auth: oAuth2Client });
 
 const shortenUrl = async (longUrl) => {
   const shortURL = tinyurl.shorten(longUrl);
-  console.log("shortURL", shortURL);
+  // console.log("shortURL", shortURL);
   return shortURL;
 };
 
@@ -59,7 +59,7 @@ const getFormattedDate = () => {
   const today = new Date();
   const options = { year: "numeric", month: "long", day: "numeric" };
 
-  console.log(today.toLocaleDateString("en-US", options));
+  // console.log(today.toLocaleDateString("en-US", options));
 
   return today.toLocaleDateString("en-US", options);
 };
@@ -72,7 +72,7 @@ const getCurrentDate = () => {
   const hours = String(now.get("hour")).padStart(2, "0");
   const minutes = String(now.get("minute")).padStart(2, "0");
 
-  console.log(`${year}-${month}-${day} ${hours}:${minutes}`);
+  // console.log(`${year}-${month}-${day} ${hours}:${minutes}`);
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
 
@@ -134,15 +134,11 @@ app.get("/refresh", async (req, res) => {
 });
 
 async function handleUserInput(userMessage, From) {
-  console.log("we are here===> 1");
   const session = userSessions[From];
   const conversationHistory = session.conversationHistory || [];
   conversationHistory.push({ role: "user", content: userMessage });
-  console.log("we are here===> 2");
 
   assignerMap.push(From);
-
-  console.log("assigner Map===> 0", assignerMap);
 
   if (session.step === 5) {
     if (userMessage.toLowerCase() === "yes") {
@@ -195,7 +191,7 @@ async function handleUserInput(userMessage, From) {
           `The task *${session.task}* assigned to *${session.assignee}* was completed. ✅`
         );
 
-        cronJobs.get(taskId)?.stop();
+        cronJobs.get(taskId)?.cron?.stop();
         cronJobs.delete(taskId);
       }
 
@@ -366,7 +362,7 @@ User input: ${userMessage}
           return;
         }
 
-        console.log("FROM NUMBER===>", From); 
+        console.log("FROM NUMBER===>", From);
 
         console.log("matchingAssignees====>", matchingAssignees);
 
@@ -412,8 +408,7 @@ Thank you for providing the task details! Here's a quick summary:
           );
           console.log("assignedPerson--->", assignedPerson);
           console.log("taskData", taskData);
-          console.log('session after adding all details===>', session);
-          
+
           if (assignedPerson) {
             let dueDateTime = `${taskData.dueDate} ${taskData.dueTime}`;
             if (
@@ -430,10 +425,10 @@ Thank you for providing the task details! Here's a quick summary:
                 reminder: "true",
                 reminder_frequency: taskData.reminder_frequency,
                 reason: null,
-                started_at: session.started_at || getCurrentDate(), 
+                started_at: session.started_at || getCurrentDate(),
                 reminder_type: taskData.reminder_type || "recurring", // Default to recurring if not specified
                 reminderDateTime: taskData.reminderDateTime || null, // Store reminder date and time
-                                notes: session.notes || null, // Include notes from session
+                notes: session.notes || null, // Include notes from session
               };
 
               const { data: existingData, error: fetchError } = await supabase
@@ -460,7 +455,7 @@ Thank you for providing the task details! Here's a quick summary:
                 .eq("employerNumber", From)
                 .select();
 
-              console.log("Matching Task:", data, error);
+              // console.log("Matching Task:", data, error);
               if (error) {
                 console.error("Error inserting task into Supabase:", error);
                 sendMessage(From, "Error saving the task.");
@@ -481,22 +476,19 @@ Thank you for providing the task details! Here's a quick summary:
                 delete userSessions[From];
                 session.conversationHistory = [];
 
-                await fetch(
-                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      reminder_frequency: taskData.reminder_frequency,
-                      taskId: newTask.taskId,
-                      reminder_type: taskData.reminder_type || "recurring",
-                      dueDateTime: dueDateTime, // Pass due date for one-time reminders
-                      reminderDateTime: taskData.reminderDateTime,
-                    }),
-                  }
-                )
+                await fetch("http://localhost:8000/update-reminder", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    reminder_frequency: taskData.reminder_frequency,
+                    taskId: newTask.taskId,
+                    reminder_type: taskData.reminder_type || "recurring",
+                    dueDateTime: dueDateTime, // Pass due date for one-time reminders
+                    reminderDateTime: taskData.reminderDateTime,
+                  }),
+                })
                   .then((res) => res.json())
                   .then((response) => {
                     console.log("taskID for reminder--->", newTask.taskId);
@@ -838,54 +830,52 @@ async function makeTwilioRequest() {
                 console.log("Order details extracted successfully:", success);
 
                 if (success) {
-              // Initialize session with extracted task details
-              userSessions[From] = {
-                step: 1, // Start at step 1 for task detail collection
-                task: parsed.tasks[0]?.task_details || "Bakery Order",
-                assignee: parsed.name || "Unknown Assignee",
-                dueDate: parsed.tasks[0]?.due_date?.split(" ")[0] || "", // Extract date if available
-                dueTime: parsed.tasks[0]?.due_date?.split(" ")[1] || "", // Extract time if available
-                reminder_type: parsed.tasks[0]?.reminder_type || "",
-                reminder_frequency: parsed.tasks[0]?.reminder_frequency || null,
-                reminderDateTime: parsed.tasks[0]?.reminderDateTime || null,
-                notes: parsed.tasks[0]?.notes || null, // Store notes from tasks
-                started_at: parsed.tasks[0]?.started_at || null, // Store started_at from tasks
-                assignerNumber: From,
-                conversationHistory: [],
-                taskId: parsed.tasks[0]?.taskId || Date.now().toString(),
-                fromImage: true, // Flag to indicate task originated from an image
-              };
+                  // Initialize session with extracted task details
+                  userSessions[From] = {
+                    step: 1, // Start at step 1 for task detail collection
+                    task: parsed.tasks[0]?.task_details || "Bakery Order",
+                    assignee: parsed.name || "Unknown Assignee",
+                    dueDate: parsed.tasks[0]?.due_date?.split(" ")[0] || "", // Extract date if available
+                    dueTime: parsed.tasks[0]?.due_date?.split(" ")[1] || "", // Extract time if available
+                    reminder_type: parsed.tasks[0]?.reminder_type || "",
+                    reminder_frequency:
+                      parsed.tasks[0]?.reminder_frequency || null,
+                    reminderDateTime: parsed.tasks[0]?.reminderDateTime || null,
+                    notes: parsed.tasks[0]?.notes || null, // Store notes from tasks
+                    started_at: parsed.tasks[0]?.started_at || null, // Store started_at from tasks
+                    assignerNumber: From,
+                    conversationHistory: [],
+                    taskId: parsed.tasks[0]?.taskId || Date.now().toString(),
+                    fromImage: true, // Flag to indicate task originated from an image
+                  };
 
-              // Create a JSON string mimicking user input for handleUserInput
-              const imageTaskDetails = {
-                task: userSessions[From].task,
-                assignee: userSessions[From].assignee,
-                dueDate: userSessions[From].dueDate,
-                dueTime: userSessions[From].dueTime,
-                reminder_type: userSessions[From].reminder_type,
-                reminder_frequency: userSessions[From].reminder_frequency,
-                reminderDateTime: userSessions[From].reminderDateTime,
-                                notes: userSessions[From].notes, // Include notes in JSON
-                                started_at: userSessions[From].started_at, // Include started_at in JSON
-              };
+                  // Create a JSON string mimicking user input for handleUserInput
+                  const imageTaskDetails = {
+                    task: userSessions[From].task,
+                    assignee: userSessions[From].assignee,
+                    dueDate: userSessions[From].dueDate,
+                    dueTime: userSessions[From].dueTime,
+                    reminder_type: userSessions[From].reminder_type,
+                    reminder_frequency: userSessions[From].reminder_frequency,
+                    reminderDateTime: userSessions[From].reminderDateTime,
+                    notes: userSessions[From].notes, // Include notes in JSON
+                    started_at: userSessions[From].started_at, // Include started_at in JSON
+                  };
 
-              // Send initial message to user
-              sendMessage(
-                From,
-                "Order details extracted successfully! 🎉"
-              );
+                  // Send initial message to user
+                  sendMessage(From, "Order details extracted successfully! 🎉");
 
-              // Pass the extracted details to handleUserInput as JSON
-              await handleUserInput(JSON.stringify(imageTaskDetails), From);
+                  // Pass the extracted details to handleUserInput as JSON
+                  await handleUserInput(JSON.stringify(imageTaskDetails), From);
 
-              // Respond to Twilio to acknowledge the message
-              res.setHeader("Content-Type", "text/xml");
-              res.status(200).send(twiml.toString());
-              console.log(
-                `Response sent successfully in ${Date.now() - startTime}ms`
-              );
-              return;
-            } else {
+                  // Respond to Twilio to acknowledge the message
+                  res.setHeader("Content-Type", "text/xml");
+                  res.status(200).send(twiml.toString());
+                  console.log(
+                    `Response sent successfully in ${Date.now() - startTime}ms`
+                  );
+                  return;
+                } else {
                   sendMessage(From, "Error: Could not find assignee.");
                 }
               } catch (e) {
@@ -1436,6 +1426,12 @@ app.post("/update-reminder", async (req, res) => {
   }
 
   const sendReminder = async () => {
+    const currentTime = moment().tz("Asia/Kolkata");
+    console.log(
+      `Sending reminder for task ${taskId} at ${currentTime.format(
+        "YYYY-MM-DD HH:mm:ss"
+      )} IST`
+    );
     console.log(`Checking reminder for task ${taskId}...`);
 
     const { data: groupedData, error } = await supabase
@@ -1451,13 +1447,12 @@ app.post("/update-reminder", async (req, res) => {
       row.tasks?.some((task) => task.taskId === taskId)
     );
 
-    console.log("matchedRow===>", matchedRow);
-
     if (!matchedRow) {
-      console.log(
-        `No matching task found for task ${taskId}. Stopping reminder.`
-      );
-      cronJobs.get(taskId)?.stop();
+      console.log(`No matching task found for task ${taskId}. Stopping reminder.`);
+      const job = cronJobs.get(taskId);
+      if (job?.timeoutId) {
+        clearTimeout(job.timeoutId);
+      }
       cronJobs.delete(taskId);
       return;
     }
@@ -1476,7 +1471,10 @@ app.post("/update-reminder", async (req, res) => {
       console.log(
         `Task ${taskId} doesn't need reminder anymore. Stopping reminder.`
       );
-      cronJobs.get(taskId)?.stop();
+     const job = cronJobs.get(taskId);
+      if (job?.timeoutId) {
+        clearTimeout(job.timeoutId);
+      }
       cronJobs.delete(taskId);
       return;
     }
@@ -1569,29 +1567,138 @@ app.post("/update-reminder", async (req, res) => {
     }
 
     const quantity = parseInt(match[1], 10);
-    const unit = match[2];
+    let unit = match[2];
 
-    let cronExpression = "";
-    if (unit === "minute" || unit === "min" || unit === "mins") {
-      cronExpression = `*/${quantity} * * * *`;
+    if (quantity <= 0) {
+      console.log("Invalid reminder frequency quantity:", quantity);
+      return res
+        .status(400)
+        .json({ message: "Reminder frequency quantity must be positive" });
+    }
+
+    if (
+      unit === "minute" ||
+      unit === "min" ||
+      unit === "mins" ||
+      unit === "minutes"
+    ) {
+      unit = "minutes";
     } else if (
       unit === "hour" ||
-      unit === "hours" ||
+      unit === "hr" ||
       unit === "hrs" ||
-      unit === "hr"
+      unit === "hours"
     ) {
-      cronExpression = `0 */${quantity} * * *`;
+      unit = "hours";
     } else if (unit === "day" || unit === "days") {
-      cronExpression = `0 0 */${quantity} * *`;
+      unit = "days";
+    }
+
+    console.log("quantity===>", quantity, "unit===>", unit);
+
+    // Calculate the first reminder time (5 hours from now)
+    const now = moment().tz("Asia/Kolkata");
+    const firstReminderTime = now.clone().add(quantity, unit);
+    const delay = firstReminderTime.diff(now);
+
+    console.log(`Now: ${now.format("YYYY-MM-DD HH:mm:ss")} IST`);
+    console.log(
+      `First reminder time: ${firstReminderTime.format(
+        "YYYY-MM-DD HH:mm:ss"
+      )} IST`
+    );
+    console.log(`Delay: ${delay} ms`);
+
+    if (delay <= 0) {
+      console.error(
+        `Invalid delay for task ${taskId}: ${delay} ms. Skipping reminder.`
+      );
+      return res
+        .status(400)
+        .json({ message: "Invalid reminder time: must be in the future" });
+    }
+
+    let cronExpression = "";
+    if (unit === "minutes") {
+      const scheduleReminder = async () => {
+        await sendReminder();
+        const nextReminderTime = moment()
+          .tz("Asia/Kolkata")
+          .add(quantity, "minutes");
+        console.log(
+          `Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
+            "YYYY-MM-DD HH:mm:ss"
+          )} IST`
+        );
+        // Persist next reminder time
+        await supabase.from("reminders").upsert({
+          taskId,
+          reminder_frequency,
+          nextReminderTime: nextReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+        });
+        const nextDelay = nextReminderTime.diff(moment().tz("Asia/Kolkata"));
+        const timeoutId = setTimeout(scheduleReminder, nextDelay);
+        cronJobs.set(taskId, {
+          timeoutId,
+          frequency: reminder_frequency,
+          type: "recurring",
+        });
+      };
+
+      setTimeout(async () => {
+        await scheduleReminder();
+      }, delay);
+
+      cronJobs.set(taskId, {
+        type: "recurring",
+        frequency: reminder_frequency,
+      });
+      console.log(
+        `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
+          "YYYY-MM-DD HH:mm:ss"
+        )} IST with frequency ${reminder_frequency}`
+      );
+      // Persist initial reminder
+      await supabase.from("reminders").upsert({
+        taskId,
+        reminder_frequency,
+        nextReminderTime: firstReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+      });
+      return res.status(200).json({ message: "Recurring reminder scheduled" });
+    } else if (unit === "hours") {
+      const minute = firstReminderTime.minute();
+      cronExpression = `${minute} */${quantity} * * *`;
+    } else if (unit === "days") {
+      const minute = firstReminderTime.minute();
+      const hour = firstReminderTime.hour();
+      cronExpression = `${minute} ${hour} */${quantity} * *`;
     } else {
-      console.log("Unsupported frequency unit");
+      console.log("Unsupported frequency unit:", unit);
       return res.status(400).json({ message: "Unsupported frequency unit" });
     }
 
-    const cronJob = cron.schedule(cronExpression, sendReminder);
-    cronJobs.set(taskId, cronJob);
+    console.log(`Cron expression for task==> 1 ${taskId}: ${cronExpression}`);
+
+    setTimeout(async () => {
+      await sendReminder();
+
+      // Schedule recurring reminders in Asia/Kolkata
+      const cronJob = cron.schedule(cronExpression, sendReminder, {
+        timezone: "Asia/Kolkata", // Explicitly set to IST
+      });
+      cronJobs.set(taskId, { cron: cronJob, frequency: reminder_frequency });
+      console.log(
+        `Scheduled recurring reminders for task ${taskId} with cron ${cronExpression} starting after first reminder at ${firstReminderTime.format(
+          "YYYY-MM-DD HH:mm:ss"
+        )} IST`
+      );
+    }, delay);
+
+    cronJobs.set(taskId, { type: "recurring", frequency: reminder_frequency });
     console.log(
-      `Scheduled recurring reminder for task ${taskId} with frequency ${reminder_frequency}`
+      `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
+        "YYYY-MM-DD HH:mm:ss"
+      )} IST with frequency ${reminder_frequency}`
     );
     return res.status(200).json({ message: "Recurring reminder scheduled" });
   }
