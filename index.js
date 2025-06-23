@@ -467,16 +467,21 @@ Thank you for providing the task details! Here's a quick summary:
                     taskData.task
                   }* has been assigned to *${taskData.assignee.toUpperCase()}*\n🗓️ *Due Date:* ${dueDateTime}`
                 );
-                sendMessage(
+                   sendMessage(
                   `whatsapp:+${assignedPerson.phone}`,
-                  `📬 *New Task Assigned!*\n\nHello *${taskData.assignee.toUpperCase()}*,\nYou've been assigned a new task:\n\n📝 *Task:* *${
-                    taskData.task
-                  }*\n📅 *Deadline:* ${dueDateTime}`
+                  null, // No body for template
+                  true, // isTemplate flag
+                  {
+                    "1": taskData.assignee.toUpperCase(),
+                    "2": taskData.task,
+                    "3": dueDateTime
+                  },
+                  process.env.TWILIO_TASK_TEMPLATE_SID
                 );
                 delete userSessions[From];
                 session.conversationHistory = [];
 
-                await fetch("https://whatsappbot-task-management-be-production.up.railway.app/update-reminder", {
+                await fetch("http://localhost:8000/update-reminder", {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
@@ -517,24 +522,35 @@ Thank you for providing the task details! Here's a quick summary:
   }
 }
 
-function sendMessage(to, message) {
+async function sendMessage(to, message, isTemplate = false, templateData = {}, template_id) {
   console.log("Sending message to:", to);
   console.log("Message:", message);
-  client.messages
-    .create({
+
+  console.log('isTemplate-->',isTemplate, 'templateData-->', templateData);
+  
+  try {
+    const messageOptions = {
       from: process.env.TWILIO_PHONE_NUMBER,
       to,
-      body: message,
-    })
-    .then((message) => {
-      console.log("Message sent successfully:", message.sid);
-    })
-    .catch((err) => {
-      console.error("Error sending message:", err);
-      if (err.code) {
-        console.error("Twilio error code:", err.code);
-      }
-    });
+    };
+
+    if (isTemplate) {
+      messageOptions.contentSid = template_id; // Template SID from .env
+      messageOptions.contentVariables = JSON.stringify(templateData);
+    } else {
+      messageOptions.body = message;
+    }
+
+    const sentMessage = await client.messages.create(messageOptions);
+    console.log("Message sent successfully:", sentMessage.sid);
+    return sentMessage;
+  } catch (err) {
+    console.error("Error sending message:", err);
+    if (err.code) {
+      console.error("Twilio error code:", err.code);
+    }
+    throw err;
+  }
 }
 
 async function transcribeAudioDirectly(mediaUrl) {
@@ -772,6 +788,11 @@ async function insertBakeryOrder(data, From) {
 
 async function makeTwilioRequest() {
   app.post("/whatsapp", async (req, res) => {
+
+     const buttonPayload = req.body.ButtonPayload
+
+    console.log('buttonPayload inside whatsapp endpoint---->', buttonPayload);
+
     const { Body, From } = req.body;
 
     todayDate = getFormattedDate();
@@ -786,6 +807,64 @@ async function makeTwilioRequest() {
     let incomingMsg = Body.trim();
 
     const userNumber = req.body.From;
+
+     if (buttonPayload) {
+    console.log("ButtonPayload received:", buttonPayload);
+
+    // Parse ButtonPayload (format: yes_<taskId> or no_<taskId>)
+    const [response, taskId] = buttonPayload.split("_");
+
+    if (!taskId || !["yes", "no"].includes(response.toLowerCase())) {
+      console.error("Invalid ButtonPayload format:", ButtonPayload);
+      twiml.message("Error: Invalid response. Please use the provided buttons.");
+      res.setHeader("Content-Type", "text/xml");
+      return res.status(200).send(twiml.toString());
+    }
+
+    // Fetch task details from Supabase based on taskId
+    const { data: groupedData, error } = await supabase
+      .from("grouped_tasks")
+      .select("name, phone, tasks, employerNumber");
+
+    if (error) {
+      console.error("Error fetching grouped_tasks:", error);
+      twiml.message("Error: Could not retrieve task details.");
+      res.setHeader("Content-Type", "text/xml");
+      return res.status(200).send(twiml.toString());
+    }
+
+    // Find the row containing the task with the matching taskId
+    const matchedRow = groupedData.find((row) =>
+      row.tasks?.some((task) => task.taskId === taskId)
+    );
+
+    if (!matchedRow) {
+      console.error(`No task found for taskId: ${taskId}`);
+      twiml.message("Error: Task not found.");
+      res.setHeader("Content-Type", "text/xml");
+      return res.status(200).send(twiml.toString());
+    }
+
+    // Get the specific task
+    const matchedTask = matchedRow.tasks.find((task) => task.taskId === taskId);
+
+    // Initialize user session with task details
+    userSessions[From] = {
+      step: 5, // Set to step 5 for handling Yes/No responses
+      task: matchedTask.task_details,
+      assignee: matchedRow.name,
+      fromNumber: matchedRow.employerNumber,
+      taskId: taskId,
+      conversationHistory: [],
+    };
+
+    // Pass the button response to handleUserInput
+    await handleUserInput(response.toLowerCase(), From);
+
+    // Respond to Twilio
+    res.setHeader("Content-Type", "text/xml");
+    return res.status(200)
+  }
 
     if (numMedia > 0 && mediaUrl && mediaType?.startsWith("image/")) {
       const twiml = new MessagingResponse();
@@ -1483,9 +1562,14 @@ app.post("/update-reminder", async (req, res) => {
 
     // send TEMPORARY due date and time for one-time reminders
     sendMessage(
-      `whatsapp:+${matchedRow.phone}`,
-      `⏰ *Reminder*\n\nHas the task *${matchedTask.task_details}* assigned to you been completed yet?\n✉️ Reply with Yes or No.\n📅 *Due:* ${matchedTask.due_date}`
-    );
+                  `whatsapp:+${matchedRow.phone}`,
+                  null, // No body for template
+                  true, // isTemplate flag
+                  { "1": matchedTask.task_details,
+                    "2": matchedTask.due_date,
+                  "3": taskId},
+                  process.env.TWILIO_REMINDER_TEMPLATE_SID
+                );
 
     userSessions[`whatsapp:+${matchedRow.phone}`] = {
       step: 5,
