@@ -481,7 +481,7 @@ Thank you for providing the task details! Here's a quick summary:
                 delete userSessions[From];
                 session.conversationHistory = [];
 
-                await fetch("http://localhost:8000/update-reminder", {
+                await fetch("https://whatsappbot-task-management-be-production.up.railway.app/update-reminder", {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
