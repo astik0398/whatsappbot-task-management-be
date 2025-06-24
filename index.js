@@ -42,9 +42,9 @@ oAuth2Client.setCredentials({
 const calendar = google.calendar({ version: "v3", auth: oAuth2Client });
 
 const shortenUrl = async (longUrl) => {
-  const shortURL = tinyurl.shorten(longUrl);
-  // console.log("shortURL", shortURL);
-  return shortURL;
+  const shortURL = await tinyurl.shorten(longUrl); // Ensure you await the promise
+  const code = shortURL.split("/").pop(); // Extract the part after the last "/"
+  return code;
 };
 
 let allData = [];
@@ -273,6 +273,12 @@ Your goal is to guide the user through task assignment:
 - Follow up if any information is incomplete.
 - Keep the respone concise and structured.
 - Once you have all the details please **summarize** the entered details
+
+**Task Description Correction**:
+- Automatically detect and correct any typos, spelling errors, or grammatical issues in the task description.
+- Use natural language understanding to infer the intended meaning and correct to standard English.
+- Ensure the corrected task is a complete, professional, and grammatically correct sentence.
+- Example: If the user provides "snd remnder everydy for aprovl", correct it to "Send reminder every day for approval".
 
 EXAMPLES: 
 
@@ -1016,12 +1022,26 @@ async function makeTwilioRequest() {
         });
 
         const twiml = new MessagingResponse();
-        twiml.message(
-          `📅 Ready to schedule your meeting? Sign in with Google to continue: ${await shortenUrl(
-            authUrl
-          )} 🛡️`
-        );
-        return res.type("text/xml").send(twiml.toString());
+
+         try {
+            await sendMessage(
+                userNumber, // Send to userNumber
+                null, // No body for template
+                true, // isTemplate flag
+                {
+                    "1": await shortenUrl(authUrl) // Map {{1}} to shortened URL
+                },
+                process.env.TWILIO_MEETING_TEMPLATE_SID // Template SID
+            );
+            // Return empty TwiML response since message is sent via sendMessage
+            return res.type("text/xml").send(twiml.toString());
+        } catch (error) {
+            console.error("Error sending meeting auth template:", error);
+            twiml.message(
+                "⚠️ Error initiating authentication. Please try again later."
+            );
+            return res.type("text/xml").send(twiml.toString());
+        }
       }
 
       // Initialize session if not exists
