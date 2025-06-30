@@ -191,8 +191,17 @@ async function handleUserInput(userMessage, From) {
           `The task *${session.task}* assigned to *${session.assignee}* was completed. ✅`
         );
 
-        cronJobs.get(taskId)?.cron?.stop();
+         const job = cronJobs.get(taskId);
+        if (job?.timeoutId) {
+          clearTimeout(job.timeoutId);
+        }
+        if (job?.cron) {
+          job.cron.stop();
+        }
         cronJobs.delete(taskId);
+
+                await supabase.from("reminders").delete().eq("taskId", taskId);
+
       }
 
       delete userSessions[From];
@@ -473,33 +482,36 @@ Thank you for providing the task details! Here's a quick summary:
                     taskData.task
                   }* has been assigned to *${taskData.assignee.toUpperCase()}*\n🗓️ *Due Date:* ${dueDateTime}`
                 );
-                   sendMessage(
+                sendMessage(
                   `whatsapp:+${assignedPerson.phone}`,
                   null, // No body for template
                   true, // isTemplate flag
                   {
-                    "1": taskData.assignee.toUpperCase(),
-                    "2": taskData.task,
-                    "3": dueDateTime
+                    1: taskData.assignee.toUpperCase(),
+                    2: taskData.task,
+                    3: dueDateTime,
                   },
                   process.env.TWILIO_TASK_TEMPLATE_SID
                 );
                 delete userSessions[From];
                 session.conversationHistory = [];
 
-                await fetch("https://whatsappbot-task-management-be-production.up.railway.app/update-reminder", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    reminder_frequency: taskData.reminder_frequency,
-                    taskId: newTask.taskId,
-                    reminder_type: taskData.reminder_type || "recurring",
-                    dueDateTime: dueDateTime, // Pass due date for one-time reminders
-                    reminderDateTime: taskData.reminderDateTime,
-                  }),
-                })
+                await fetch(
+                  "http://localhost:8000/update-reminder",
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      reminder_frequency: taskData.reminder_frequency,
+                      taskId: newTask.taskId,
+                      reminder_type: taskData.reminder_type || "recurring",
+                      dueDateTime: dueDateTime, // Pass due date for one-time reminders
+                      reminderDateTime: taskData.reminderDateTime,
+                    }),
+                  }
+                )
                   .then((res) => res.json())
                   .then((response) => {
                     console.log("taskID for reminder--->", newTask.taskId);
@@ -528,12 +540,18 @@ Thank you for providing the task details! Here's a quick summary:
   }
 }
 
-async function sendMessage(to, message, isTemplate = false, templateData = {}, template_id) {
+async function sendMessage(
+  to,
+  message,
+  isTemplate = false,
+  templateData = {},
+  template_id
+) {
   console.log("Sending message to:", to);
   console.log("Message:", message);
 
-  console.log('isTemplate-->',isTemplate, 'templateData-->', templateData);
-  
+  console.log("isTemplate-->", isTemplate, "templateData-->", templateData);
+
   try {
     const messageOptions = {
       from: process.env.TWILIO_PHONE_NUMBER,
@@ -794,10 +812,9 @@ async function insertBakeryOrder(data, From) {
 
 async function makeTwilioRequest() {
   app.post("/whatsapp", async (req, res) => {
+    const buttonPayload = req.body.ButtonPayload;
 
-     const buttonPayload = req.body.ButtonPayload
-
-    console.log('buttonPayload inside whatsapp endpoint---->', buttonPayload);
+    console.log("buttonPayload inside whatsapp endpoint---->", buttonPayload);
 
     const { Body, From } = req.body;
 
@@ -814,63 +831,67 @@ async function makeTwilioRequest() {
 
     const userNumber = req.body.From;
 
-     if (buttonPayload) {
-    console.log("ButtonPayload received:", buttonPayload);
+    if (buttonPayload) {
+      console.log("ButtonPayload received:", buttonPayload);
 
-    // Parse ButtonPayload (format: yes_<taskId> or no_<taskId>)
-    const [response, taskId] = buttonPayload.split("_");
+      // Parse ButtonPayload (format: yes_<taskId> or no_<taskId>)
+      const [response, taskId] = buttonPayload.split("_");
 
-    if (!taskId || !["yes", "no"].includes(response.toLowerCase())) {
-      console.error("Invalid ButtonPayload format:", ButtonPayload);
-      twiml.message("Error: Invalid response. Please use the provided buttons.");
+      if (!taskId || !["yes", "no"].includes(response.toLowerCase())) {
+        console.error("Invalid ButtonPayload format:", ButtonPayload);
+        twiml.message(
+          "Error: Invalid response. Please use the provided buttons."
+        );
+        res.setHeader("Content-Type", "text/xml");
+        return res.status(200).send(twiml.toString());
+      }
+
+      // Fetch task details from Supabase based on taskId
+      const { data: groupedData, error } = await supabase
+        .from("grouped_tasks")
+        .select("name, phone, tasks, employerNumber");
+
+      if (error) {
+        console.error("Error fetching grouped_tasks:", error);
+        twiml.message("Error: Could not retrieve task details.");
+        res.setHeader("Content-Type", "text/xml");
+        return res.status(200).send(twiml.toString());
+      }
+
+      // Find the row containing the task with the matching taskId
+      const matchedRow = groupedData.find((row) =>
+        row.tasks?.some((task) => task.taskId === taskId)
+      );
+
+      if (!matchedRow) {
+        console.error(`No task found for taskId: ${taskId}`);
+        twiml.message("Error: Task not found.");
+        res.setHeader("Content-Type", "text/xml");
+        return res.status(200).send(twiml.toString());
+      }
+
+      // Get the specific task
+      const matchedTask = matchedRow.tasks.find(
+        (task) => task.taskId === taskId
+      );
+
+      // Initialize user session with task details
+      userSessions[From] = {
+        step: 5, // Set to step 5 for handling Yes/No responses
+        task: matchedTask.task_details,
+        assignee: matchedRow.name,
+        fromNumber: matchedRow.employerNumber,
+        taskId: taskId,
+        conversationHistory: [],
+      };
+
+      // Pass the button response to handleUserInput
+      await handleUserInput(response.toLowerCase(), From);
+
+      // Respond to Twilio
       res.setHeader("Content-Type", "text/xml");
-      return res.status(200).send(twiml.toString());
+      return res.status(200);
     }
-
-    // Fetch task details from Supabase based on taskId
-    const { data: groupedData, error } = await supabase
-      .from("grouped_tasks")
-      .select("name, phone, tasks, employerNumber");
-
-    if (error) {
-      console.error("Error fetching grouped_tasks:", error);
-      twiml.message("Error: Could not retrieve task details.");
-      res.setHeader("Content-Type", "text/xml");
-      return res.status(200).send(twiml.toString());
-    }
-
-    // Find the row containing the task with the matching taskId
-    const matchedRow = groupedData.find((row) =>
-      row.tasks?.some((task) => task.taskId === taskId)
-    );
-
-    if (!matchedRow) {
-      console.error(`No task found for taskId: ${taskId}`);
-      twiml.message("Error: Task not found.");
-      res.setHeader("Content-Type", "text/xml");
-      return res.status(200).send(twiml.toString());
-    }
-
-    // Get the specific task
-    const matchedTask = matchedRow.tasks.find((task) => task.taskId === taskId);
-
-    // Initialize user session with task details
-    userSessions[From] = {
-      step: 5, // Set to step 5 for handling Yes/No responses
-      task: matchedTask.task_details,
-      assignee: matchedRow.name,
-      fromNumber: matchedRow.employerNumber,
-      taskId: taskId,
-      conversationHistory: [],
-    };
-
-    // Pass the button response to handleUserInput
-    await handleUserInput(response.toLowerCase(), From);
-
-    // Respond to Twilio
-    res.setHeader("Content-Type", "text/xml");
-    return res.status(200)
-  }
 
     if (numMedia > 0 && mediaUrl && mediaType?.startsWith("image/")) {
       const twiml = new MessagingResponse();
@@ -1023,24 +1044,24 @@ async function makeTwilioRequest() {
 
         const twiml = new MessagingResponse();
 
-         try {
-            await sendMessage(
-                userNumber, // Send to userNumber
-                null, // No body for template
-                true, // isTemplate flag
-                {
-                    "1": await shortenUrl(authUrl) // Map {{1}} to shortened URL
-                },
-                process.env.TWILIO_MEETING_TEMPLATE_SID // Template SID
-            );
-            // Return empty TwiML response since message is sent via sendMessage
-            return res.type("text/xml").send(twiml.toString());
+        try {
+          await sendMessage(
+            userNumber, // Send to userNumber
+            null, // No body for template
+            true, // isTemplate flag
+            {
+              1: await shortenUrl(authUrl), // Map {{1}} to shortened URL
+            },
+            process.env.TWILIO_MEETING_TEMPLATE_SID // Template SID
+          );
+          // Return empty TwiML response since message is sent via sendMessage
+          return res.type("text/xml").send(twiml.toString());
         } catch (error) {
-            console.error("Error sending meeting auth template:", error);
-            twiml.message(
-                "⚠️ Error initiating authentication. Please try again later."
-            );
-            return res.type("text/xml").send(twiml.toString());
+          console.error("Error sending meeting auth template:", error);
+          twiml.message(
+            "⚠️ Error initiating authentication. Please try again later."
+          );
+          return res.type("text/xml").send(twiml.toString());
         }
       }
 
@@ -1503,6 +1524,287 @@ app.get("/auth/google/callback", async (req, res) => {
   }
 });
 
+async function initializeReminders() {
+  console.log("Initializing reminders from database...");
+  try {
+    // Fetch all reminders from the reminders table
+    const { data: reminders, error } = await supabase
+      .from("reminders")
+      .select("taskId, reminder_frequency, nextReminderTime");
+
+    if (error) {
+      console.error("Error fetching reminders:", error);
+      return;
+    }
+
+    if (!reminders || reminders.length === 0) {
+      console.log("No reminders found in database.");
+      return;
+    }
+
+    console.log(`Found ${reminders.length} reminders to initialize.`);
+
+    for (const reminder of reminders) {
+      const { taskId, reminder_frequency, nextReminderTime } = reminder;
+
+      // Skip if already scheduled
+      if (cronJobs.has(taskId)) {
+        console.log(`Reminder for task ${taskId} already scheduled, skipping.`);
+        continue;
+      }
+
+      // Fetch task details to determine reminder_type
+      const { data: groupedData, error: taskError } = await supabase
+        .from("grouped_tasks")
+        .select("name, phone, tasks, employerNumber");
+
+      if (taskError) {
+        console.error(`Error fetching task for ${taskId}:`, taskError);
+        continue;
+      }
+
+      const matchedRow = groupedData.find((row) =>
+        row.tasks?.some((task) => task.taskId === taskId)
+      );
+
+      if (!matchedRow) {
+        console.log(`No task found for taskId ${taskId}, skipping reminder.`);
+        continue;
+      }
+
+      const matchedTask = matchedRow.tasks.find(
+        (task) => task.taskId === taskId
+      );
+
+      if (
+        matchedTask.reminder !== "true" ||
+        matchedTask.task_done === "Completed" ||
+        matchedTask.task_done === "No" ||
+        matchedTask.task_done === "Reminder sent"
+      ) {
+        console.log(`Task ${taskId} does not need reminders, skipping.`);
+        continue;
+      }
+
+      // Determine reminder_type (default to recurring if not specified)
+      const reminder_type = matchedTask.reminder_type || "recurring";
+      const reminderDateTime =
+        reminder_type === "one-time" ? matchedTask.reminderDateTime : null;
+
+      // Reuse sendReminder from /update-reminder
+      const sendReminder = async () => {
+        const currentTime = moment().tz("Asia/Kolkata");
+        console.log(
+          `Sending reminder for task ${taskId} at ${currentTime.format(
+            "YYYY-MM-DD HH:mm:ss"
+          )} IST`
+        );
+
+        if (!matchedRow || !matchedTask) {
+          console.log(`Task ${taskId} no longer valid, stopping reminder.`);
+          cronJobs.delete(taskId);
+          return;
+        }
+
+        console.log(
+          `Sending reminder to: ${matchedRow.phone} for task ${taskId}`
+        );
+
+        await sendMessage(
+          `whatsapp:+${matchedRow.phone}`,
+          null,
+          true,
+          {
+            1: matchedTask.task_details,
+            2: matchedTask.due_date,
+            3: taskId,
+          },
+          process.env.TWILIO_REMINDER_TEMPLATE_SID
+        );
+
+        userSessions[`whatsapp:+${matchedRow.phone}`] = {
+          step: 5,
+          task: matchedTask.task_details,
+          assignee: matchedRow.name,
+          fromNumber: matchedRow.employerNumber,
+          taskId: taskId,
+        };
+
+        // For one-time reminders, mark task to stop further reminders
+        if (reminder_type === "one-time") {
+          const { data: existingData } = await supabase
+            .from("grouped_tasks")
+            .select("tasks")
+            .eq("name", matchedRow.name.toUpperCase())
+            .eq("employerNumber", matchedRow.employerNumber)
+            .single();
+
+          const updatedTasks = existingData.tasks.map((task) =>
+            task.taskId === taskId ? { ...task, reminder: "false" } : task
+          );
+
+          await supabase
+            .from("grouped_tasks")
+            .update({ tasks: updatedTasks })
+            .eq("name", matchedRow.name.toUpperCase())
+            .eq("employerNumber", matchedRow.employerNumber);
+
+          cronJobs.delete(taskId);
+        }
+      };
+
+      if (reminder_type === "one-time" && reminderDateTime) {
+        const now = moment().tz("Asia/Kolkata");
+        const reminderTime = moment.tz(
+          reminderDateTime,
+          "YYYY-MM-DD HH:mm",
+          "Asia/Kolkata"
+        );
+        const delay = reminderTime.diff(now);
+
+        if (delay <= 0) {
+          console.log(
+            `One-time reminder for task ${taskId} is in the past, sending now.`
+          );
+          await sendReminder();
+          continue;
+        }
+
+        const timeoutId = setTimeout(async () => {
+          await sendReminder();
+        }, delay);
+
+        cronJobs.set(taskId, { type: "one-time", timeoutId });
+        console.log(
+          `Scheduled one-time reminder for task ${taskId} at ${reminderTime.format(
+            "YYYY-MM-DD HH:mm:ss"
+          )} IST`
+        );
+      } else {
+        // Handle recurring reminders
+        const frequencyPattern =
+          /(\d+)\s*(minute|min|mins|hour|hr|hrs|hours|day|days)s?/;
+        const match = reminder_frequency?.match(frequencyPattern);
+
+        if (!match) {
+          console.log(
+            `Invalid reminder frequency for task ${taskId}: ${reminder_frequency}`
+          );
+          continue;
+        }
+
+        const quantity = parseInt(match[1], 10);
+        let unit = match[2];
+
+        if (
+          unit === "minute" ||
+          unit === "min" ||
+          unit === "mins" ||
+          unit === "minutes"
+        ) {
+          unit = "minutes";
+        } else if (
+          unit === "hour" ||
+          unit === "hr" ||
+          unit === "hrs" ||
+          unit === "hours"
+        ) {
+          unit = "hours";
+        } else if (unit === "day" || unit === "days") {
+          unit = "days";
+        }
+
+        const now = moment().tz("Asia/Kolkata");
+        const nextReminder = moment.tz(
+          nextReminderTime,
+          "YYYY-MM-DD HH:mm:ss",
+          "Asia/Kolkata"
+        );
+        const delay = nextReminder.diff(now);
+
+        if (delay <= 0) {
+          console.log(
+            `Next reminder for task ${taskId} is in the past, sending now and scheduling next.`
+          );
+          await sendReminder();
+          continue;
+        }
+
+        if (unit === "minutes" || unit === "hours") {
+          const scheduleReminder = async () => {
+            await sendReminder();
+            const nextReminderTime = moment()
+              .tz("Asia/Kolkata")
+              .add(quantity, unit);
+            console.log(
+              `Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
+                "YYYY-MM-DD HH:mm:ss"
+              )} IST`
+            );
+            await supabase.from("reminders").upsert({
+              taskId,
+              reminder_frequency,
+              nextReminderTime: nextReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+            });
+            const nextDelay = nextReminderTime.diff(
+              moment().tz("Asia/Kolkata")
+            );
+            const timeoutId = setTimeout(scheduleReminder, nextDelay);
+            cronJobs.set(taskId, {
+              timeoutId,
+              frequency: reminder_frequency,
+              type: "recurring",
+            });
+          };
+
+          const timeoutId = setTimeout(async () => {
+            await scheduleReminder();
+          }, delay);
+
+          cronJobs.set(taskId, {
+            type: "recurring",
+            frequency: reminder_frequency,
+            timeoutId,
+          });
+          console.log(
+            `Scheduled recurring reminder for task ${taskId} at ${nextReminder.format(
+              "YYYY-MM-DD HH:mm:ss"
+            )} IST with frequency ${reminder_frequency}`
+          );
+        } else if (unit === "days") {
+          const minute = nextReminder.minute();
+          const hour = nextReminder.hour();
+          const cronExpression = `${minute} ${hour} */${quantity} * *`;
+
+          setTimeout(async () => {
+            await sendReminder();
+            const cronJob = cron.schedule(cronExpression, sendReminder, {
+              timezone: "Asia/Kolkata",
+            });
+            cronJobs.set(taskId, {
+              cron: cronJob,
+              frequency: reminder_frequency,
+              type: "recurring",
+            });
+            console.log(
+              `Scheduled recurring reminders for task ${taskId} with cron ${cronExpression} starting at ${nextReminder.format(
+                "YYYY-MM-DD HH:mm:ss"
+              )} IST`
+            );
+          }, delay);
+
+          cronJobs.set(taskId, {
+            type: "recurring",
+            frequency: reminder_frequency,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error initializing reminders:", error);
+  }
+}
+
 let isCronRunning = false; // Track if the cron job is active
 const cronJobs = new Map(); // Map to store cron jobs for each task
 
@@ -1547,7 +1849,9 @@ app.post("/update-reminder", async (req, res) => {
     );
 
     if (!matchedRow) {
-      console.log(`No matching task found for task ${taskId}. Stopping reminder.`);
+      console.log(
+        `No matching task found for task ${taskId}. Stopping reminder.`
+      );
       const job = cronJobs.get(taskId);
       if (job?.timeoutId) {
         clearTimeout(job.timeoutId);
@@ -1570,11 +1874,17 @@ app.post("/update-reminder", async (req, res) => {
       console.log(
         `Task ${taskId} doesn't need reminder anymore. Stopping reminder.`
       );
-     const job = cronJobs.get(taskId);
+      const job = cronJobs.get(taskId);
       if (job?.timeoutId) {
         clearTimeout(job.timeoutId);
       }
+
+      if (job?.cron) {
+    job.cron.stop();
+  }
       cronJobs.delete(taskId);
+
+      await supabase.from("reminders").delete().eq("taskId", taskId);
       return;
     }
 
@@ -1582,14 +1892,12 @@ app.post("/update-reminder", async (req, res) => {
 
     // send TEMPORARY due date and time for one-time reminders
     sendMessage(
-                  `whatsapp:+${matchedRow.phone}`,
-                  null, // No body for template
-                  true, // isTemplate flag
-                  { "1": matchedTask.task_details,
-                    "2": matchedTask.due_date,
-                  "3": taskId},
-                  process.env.TWILIO_REMINDER_TEMPLATE_SID
-                );
+      `whatsapp:+${matchedRow.phone}`,
+      null, // No body for template
+      true, // isTemplate flag
+      { 1: matchedTask.task_details, 2: matchedTask.due_date, 3: taskId },
+      process.env.TWILIO_REMINDER_TEMPLATE_SID
+    );
 
     userSessions[`whatsapp:+${matchedRow.phone}`] = {
       step: 5,
@@ -1639,6 +1947,15 @@ app.post("/update-reminder", async (req, res) => {
     );
     // const reminderTimeWithOffset = reminderTime.clone().subtract(20, "minutes");
     const delay = reminderTime.diff(now);
+
+    await supabase.from("reminders").upsert({
+      taskId,
+      reminder_frequency: 'once',
+      nextReminderTime: reminderTime.format("YYYY-MM-DD HH:mm:ss"),
+    });
+
+    console.log('taskId, reminder_frequency, nextReminderTime', taskId,reminder_frequency,reminderTime.format("YYYY-MM-DD HH:mm:ss"));
+    
 
     if (delay <= 0) {
       console.log(
@@ -1770,45 +2087,130 @@ app.post("/update-reminder", async (req, res) => {
       });
       return res.status(200).json({ message: "Recurring reminder scheduled" });
     } else if (unit === "hours") {
-      const minute = firstReminderTime.minute();
-      cronExpression = `${minute} */${quantity} * * *`;
+      const scheduleReminder = async () => {
+        await sendReminder();
+        const nextReminderTime = moment()
+          .tz("Asia/Kolkata")
+          .add(quantity, "hours");
+        console.log(
+          `Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
+            "YYYY-MM-DD HH:mm:ss"
+          )} IST`
+        );
+        await supabase.from("reminders").upsert({
+          taskId,
+          reminder_frequency,
+          nextReminderTime: nextReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+        });
+        const nextDelay = nextReminderTime.diff(moment().tz("Asia/Kolkata"));
+        const timeoutId = setTimeout(scheduleReminder, nextDelay);
+        cronJobs.set(taskId, {
+          timeoutId,
+          frequency: reminder_frequency,
+          type: "recurring",
+        });
+      };
+
+      const timeoutId = setTimeout(async () => {
+        await scheduleReminder();
+      }, delay);
+
+      cronJobs.set(taskId, {
+        type: "recurring",
+        frequency: reminder_frequency,
+        timeoutId,
+      });
+      console.log(
+        `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
+          "YYYY-MM-DD HH:mm:ss"
+        )} IST with frequency ${reminder_frequency}`
+      );
+      await supabase.from("reminders").upsert({
+        taskId,
+        reminder_frequency,
+        nextReminderTime: firstReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+      });
+      return res.status(200).json({ message: "Recurring reminder scheduled" });
     } else if (unit === "days") {
-      const minute = firstReminderTime.minute();
-      const hour = firstReminderTime.hour();
-      cronExpression = `${minute} ${hour} */${quantity} * *`;
+      const scheduleReminder = async () => {
+        await sendReminder();
+        const nextReminderTime = moment()
+          .tz("Asia/Kolkata")
+          .add(quantity, "days")
+          .set({ hour: firstReminderTime.hour(), minute: firstReminderTime.minute(), second: 0 });
+        console.log(
+          `Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
+            "YYYY-MM-DD HH:mm:ss"
+          )} IST`
+        );
+        await supabase.from("reminders").upsert({
+          taskId,
+          reminder_frequency,
+          nextReminderTime: nextReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+        });
+        const nextDelay = nextReminderTime.diff(moment().tz("Asia/Kolkata"));
+        const timeoutId = setTimeout(scheduleReminder, nextDelay);
+        cronJobs.set(taskId, {
+          timeoutId,
+          frequency: reminder_frequency,
+          type: "recurring",
+        });
+      };
+
+      const timeoutId = setTimeout(async () => {
+        await scheduleReminder();
+      }, delay);
+
+      cronJobs.set(taskId, {
+        type: "recurring",
+        frequency: reminder_frequency,
+        timeoutId,
+      });
+      console.log(
+        `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
+          "YYYY-MM-DD HH:mm:ss"
+        )} IST with frequency ${reminder_frequency}`
+      );
+      await supabase.from("reminders").upsert({
+        taskId,
+        reminder_frequency,
+        nextReminderTime: firstReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+      });
+      return res.status(200).json({ message: "Recurring reminder scheduled" });
     } else {
       console.log("Unsupported frequency unit:", unit);
       return res.status(400).json({ message: "Unsupported frequency unit" });
     }
 
-    console.log(`Cron expression for task==> 1 ${taskId}: ${cronExpression}`);
+    // console.log(`Cron expression for task==> 1 ${taskId}: ${cronExpression}`);
 
-    setTimeout(async () => {
-      await sendReminder();
+    // setTimeout(async () => {
+    //   await sendReminder();
 
-      // Schedule recurring reminders in Asia/Kolkata
-      const cronJob = cron.schedule(cronExpression, sendReminder, {
-        timezone: "Asia/Kolkata", // Explicitly set to IST
-      });
-      cronJobs.set(taskId, { cron: cronJob, frequency: reminder_frequency });
-      console.log(
-        `Scheduled recurring reminders for task ${taskId} with cron ${cronExpression} starting after first reminder at ${firstReminderTime.format(
-          "YYYY-MM-DD HH:mm:ss"
-        )} IST`
-      );
-    }, delay);
+    //   // Schedule recurring reminders in Asia/Kolkata
+    //   const cronJob = cron.schedule(cronExpression, sendReminder, {
+    //     timezone: "Asia/Kolkata", // Explicitly set to IST
+    //   });
+    //   cronJobs.set(taskId, { cron: cronJob, frequency: reminder_frequency });
+    //   console.log(
+    //     `Scheduled recurring reminders for task ${taskId} with cron ${cronExpression} starting after first reminder at ${firstReminderTime.format(
+    //       "YYYY-MM-DD HH:mm:ss"
+    //     )} IST`
+    //   );
+    // }, delay);
 
-    cronJobs.set(taskId, { type: "recurring", frequency: reminder_frequency });
-    console.log(
-      `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
-        "YYYY-MM-DD HH:mm:ss"
-      )} IST with frequency ${reminder_frequency}`
-    );
-    return res.status(200).json({ message: "Recurring reminder scheduled" });
+    // cronJobs.set(taskId, { type: "recurring", frequency: reminder_frequency });
+    // console.log(
+    //   `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
+    //     "YYYY-MM-DD HH:mm:ss"
+    //   )} IST with frequency ${reminder_frequency}`
+    // );
+    // return res.status(200).json({ message: "Recurring reminder scheduled" });
   }
 });
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
+  initializeReminders();
 });
