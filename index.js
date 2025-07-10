@@ -684,7 +684,7 @@ Thank you for providing the task details! Here's a quick summary:
     }
 
      const newTaskList = data[0].tasks
-                  .filter((task) => task.task_done === "Pending") // Only show pending tasks
+                  .filter((task) => task.task_done === "Pending" || task.task_done == "Not Completed") // Only show pending tasks
                   .slice(0, 10); // Twilio list picker supports up to 10 items
 
                 console.log(
@@ -693,13 +693,23 @@ Thank you for providing the task details! Here's a quick summary:
                   newTaskList.length
                 );
 
+                 await sendMessage(
+            `whatsapp:+${assignedPerson.phone}`, // Send to userNumber
+            null, // No body for template
+            true, // isTemplate flag
+            {
+              1: `*${taskData.assignee.toUpperCase()}*`,
+            },
+            process.env.TWILIO_TASK_ASSIGNED_TEXT // Template SID
+          );
+
                 const newTemplateData = {
                   1: `*${taskData.assignee.toUpperCase()}*`, // Task name for the assignment message
                   2: `*${taskData.task}*`, // Assignee name
                   3: `${dueDateTime}`, // Due date and time
                 };
 
-                taskList.forEach((task, index) => {
+                newTaskList.forEach((task, index) => {
                   console.log("inside for each =======>>>>>??????", task);
 
                   newTemplateData[`${index + 4}`] = `Due Date: ${formatDueDate(
@@ -720,7 +730,7 @@ Thank you for providing the task details! Here's a quick summary:
                 );
 
                 try {
-                  if (taskList.length === 1) {
+                  if (newTaskList.length === 1) {
                     console.log("inside task length which is ???????/ 1");
 
                     await sendMessage(
@@ -731,7 +741,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HX0b8b9af3fd2670f417ece43613474456" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length === 2) {
+                  } else if (newTaskList.length === 2) {
                     console.log("inside task length which is ???????? 2");
 
                     await sendMessage(
@@ -742,7 +752,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HX8ee715730a9c24c1ec6b03f18ac02514" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length === 3) {
+                  } else if (newTaskList.length === 3) {
                     console.log("inside task length which is ???????? 3");
 
                     await sendMessage(
@@ -753,7 +763,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HX6b4ca428f2a728d5c675c283db46e557" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length === 4) {
+                  } else if (newTaskList.length === 4) {
                     console.log("inside task length which is ???????? 4");
 
                     await sendMessage(
@@ -764,7 +774,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HXa31fad2405d6474f10d2ad500e37d0be" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length === 5) {
+                  } else if (newTaskList.length === 5) {
                     console.log("inside task length which is ???????? 5");
 
                     await sendMessage(
@@ -775,7 +785,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HXef85754dd2baef9c97397018834b6399" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length === 6) {
+                  } else if (newTaskList.length === 6) {
                     console.log("inside task length which is ???????? 6");
 
                     await sendMessage(
@@ -786,7 +796,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HX2f80487110d0c437c8b965a673e18281" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length === 7) {
+                  } else if (newTaskList.length === 7) {
                     console.log("inside task length which is ???????? 7");
 
                     await sendMessage(
@@ -797,7 +807,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HXc45017415b2f1d0af104f8bbaedd7b60" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length === 8) {
+                  } else if (newTaskList.length === 8) {
                     console.log("inside task length which is ???????? 8");
 
                     await sendMessage(
@@ -808,7 +818,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HX9fd8cac559d3a67331050c7f414dc14e" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length === 9) {
+                  } else if (newTaskList.length === 9) {
                     console.log("inside task length which is ???????? 9");
 
                     await sendMessage(
@@ -819,7 +829,7 @@ Thank you for providing the task details! Here's a quick summary:
                       "HXe64beb6232b2584a1fb1888530c82ff3" // Content SID for the List Picker template
                     );
                     console.log("List Picker message sent successfully");
-                  } else if (taskList.length >= 10) {
+                  } else if (newTaskList.length >= 10) {
                     console.log("inside task length which is ???????? 10");
 
                     await sendMessage(
@@ -847,7 +857,7 @@ Thank you for providing the task details! Here's a quick summary:
                 session.conversationHistory = [];
 
                 await fetch(
-                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
+                  "http://localhost:8000/update-reminder",
                   {
                     method: "POST",
                     headers: {
