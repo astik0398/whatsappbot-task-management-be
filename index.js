@@ -857,7 +857,7 @@ Thank you for providing the task details! Here's a quick summary:
                 session.conversationHistory = [];
 
                 await fetch(
-                  "http://localhost:8000/update-reminder",
+                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
                   {
                     method: "POST",
                     headers: {
@@ -2704,12 +2704,12 @@ app.post("/update-reminder", async (req, res) => {
       });
 
        const dueTime = moment.tz(dueDateTime, "YYYY-MM-DD HH:mm", "Asia/Kolkata");
-const twoHoursBeforeDue = dueTime.clone().subtract(2, "hours");
+const twoHoursBeforeDue = dueTime.clone().subtract(15, "minutes");
 const delayForSpecialReminder = twoHoursBeforeDue.diff(moment().tz("Asia/Kolkata"));
 
 if (delayForSpecialReminder > 0) {
   setTimeout(async () => {
-    console.log(`Sending 2-hour-before-due-date reminder for task ${taskId}`);
+    console.log(`Sending 15-minute-before-due-date reminder for task ${taskId}`);
 
     const { data: groupedDataForSpecial } = await supabase
       .from("grouped_tasks")
@@ -2761,18 +2761,18 @@ if (delayForSpecialReminder > 0) {
         .eq("name", matchedRowSpecial.name.toUpperCase())
         .eq("employerNumber", matchedRowSpecial.employerNumber);
 
-      console.log(`Stopped further reminders for task ${taskId} after special 2-hour message`);
+      console.log(`Stopped further reminders for task ${taskId} after special 15-minute message`);
       
   }, delayForSpecialReminder);
 
   console.log(
-    `Scheduled 2-hour-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
+    `Scheduled 15-minute-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
       "YYYY-MM-DD HH:mm:ss"
     )} IST`
   );
 } else {
   console.log(
-    `Skipping 2-hour-before-due-date reminder for task ${taskId} as time is already past.`
+    `Skipping 15-minute-before-due-date reminder for task ${taskId} as time is already past.`
   );
 }
 
@@ -2827,12 +2827,12 @@ console.log('existingJob===============>', existingJob);
       });
 
       const dueTime = moment.tz(dueDateTime, "YYYY-MM-DD HH:mm", "Asia/Kolkata");
-const twoHoursBeforeDue = dueTime.clone().subtract(2, "hours");
+const twoHoursBeforeDue = dueTime.clone().subtract(15, "minutes");
 const delayForSpecialReminder = twoHoursBeforeDue.diff(moment().tz("Asia/Kolkata"));
 
 if (delayForSpecialReminder > 0) {
   setTimeout(async () => {
-    console.log(`Sending 2-hour-before-due-date reminder for task ${taskId}`);
+    console.log(`Sending 15-minute-before-due-date reminder for task ${taskId}`);
 
     const { data: groupedDataForSpecial } = await supabase
       .from("grouped_tasks")
@@ -2884,18 +2884,18 @@ if (delayForSpecialReminder > 0) {
         .eq("name", matchedRowSpecial.name.toUpperCase())
         .eq("employerNumber", matchedRowSpecial.employerNumber);
 
-      console.log(`Stopped further reminders for task ${taskId} after special 2-hour message`);
+      console.log(`Stopped further reminders for task ${taskId} after special 15-minute message`);
       
   }, delayForSpecialReminder);
 
   console.log(
-    `Scheduled 2-hour-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
+    `Scheduled 15-minute-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
       "YYYY-MM-DD HH:mm:ss"
     )} IST`
   );
 } else {
   console.log(
-    `Skipping 2-hour-before-due-date reminder for task ${taskId} as time is already past.`
+    `Skipping 15-minute-before-due-date reminder for task ${taskId} as time is already past.`
   );
 }
 
@@ -2950,12 +2950,12 @@ console.log('existingJob===============>', existingJob);
       });
 
       const dueTime = moment.tz(dueDateTime, "YYYY-MM-DD HH:mm", "Asia/Kolkata");
-const twoHoursBeforeDue = dueTime.clone().subtract(2, "hours");
+const twoHoursBeforeDue = dueTime.clone().subtract(15, "minutes");
 const delayForSpecialReminder = twoHoursBeforeDue.diff(moment().tz("Asia/Kolkata"));
 
 if (delayForSpecialReminder > 0) {
   setTimeout(async () => {
-    console.log(`Sending 2-hour-before-due-date reminder for task ${taskId}`);
+    console.log(`Sending 15-minute-before-due-date reminder for task ${taskId}`);
 
     const { data: groupedDataForSpecial } = await supabase
       .from("grouped_tasks")
@@ -3007,18 +3007,18 @@ if (delayForSpecialReminder > 0) {
         .eq("name", matchedRowSpecial.name.toUpperCase())
         .eq("employerNumber", matchedRowSpecial.employerNumber);
 
-      console.log(`Stopped further reminders for task ${taskId} after special 2-hour message`);
+      console.log(`Stopped further reminders for task ${taskId} after special 15-minute message`);
       
   }, delayForSpecialReminder);
 
   console.log(
-    `Scheduled 2-hour-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
+    `Scheduled 15-minute-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
       "YYYY-MM-DD HH:mm:ss"
     )} IST`
   );
 } else {
   console.log(
-    `Skipping 2-hour-before-due-date reminder for task ${taskId} as time is already past.`
+    `Skipping 15-minute-before-due-date reminder for task ${taskId} as time is already past.`
   );
 }
 
