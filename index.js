@@ -52,7 +52,7 @@ let userSessions = {};
 let assignerMap = [];
 let todayDate = "";
 let currentTime = "";
-
+let currentAssigneeName
 const sessions = {};
 
 function formatDueDate(dueDateTime) {
@@ -489,8 +489,10 @@ Thank you for providing the task details! Here's a quick summary:
                 started_at: session.started_at || getCurrentDate(),
                 reminder_type: taskData.reminder_type || "recurring", // Default to recurring if not specified
                 reminderDateTime: taskData.reminderDateTime || null, // Store reminder date and time
-                notes: session.notes || null, // Include notes from session
+                notes: session.notes || null, // Include notes from session,
               };
+
+                            currentAssigneeName = taskData.assignee
 
               const { data: existingData, error: fetchError } = await supabase
                 .from("grouped_tasks")
@@ -524,7 +526,7 @@ Thank you for providing the task details! Here's a quick summary:
                 console.log("Task successfully added to Supabase.");
                 
                 const taskList = data[0].tasks
-          .filter((task) => task.task_done === "Pending") // Only show pending tasks
+          .filter((task) => task.task_done === "Pending" || task.task_done == "Not Completed") // Only show pending tasks
           .slice(0, 10) // Twilio list picker supports up to 10 items
           
                     console.log('inside handleUserInput taskList lengthh---->>>>',taskList.length);
@@ -683,181 +685,183 @@ Thank you for providing the task details! Here's a quick summary:
       return;
     }
 
-     const newTaskList = data[0].tasks
-                  .filter((task) => task.task_done === "Pending" || task.task_done == "Not Completed") // Only show pending tasks
-                  .slice(0, 10); // Twilio list picker supports up to 10 items
-
-                console.log(
-                  "inside handleUserInput newTaskList lengthh---->>>>??????????????",
-                  newTaskList,
-                  newTaskList.length
+    sendMessage(
+                 `whatsapp:+${assignedPerson.phone}`,
+                  null, // No body for template
+                  true, // isTemplate flag
+                  {
+                    "1": `*${taskData.assignee.toUpperCase()}*`,
+                    "2": `*${taskData.task}*`,
+                    "3": `${dueDateTime}`
+                  },
+                  "HXa0c0426c16a6f2435fb13714222f7cfd"
                 );
 
-                 await sendMessage(
-            `whatsapp:+${assignedPerson.phone}`, // Send to userNumber
-            null, // No body for template
-            true, // isTemplate flag
-            {
-              1: `*${taskData.assignee.toUpperCase()}*`,
-            },
-            process.env.TWILIO_TASK_ASSIGNED_TEXT // Template SID
-          );
+    //  const newTaskList = data[0].tasks
+    //               .filter((task) => task.task_done === "Pending" || task.task_done == "Not Completed") // Only show pending tasks
+    //               .slice(0, 10); // Twilio list picker supports up to 10 items
 
-                const newTemplateData = {
-                  1: `*${taskData.assignee.toUpperCase()}*`, // Task name for the assignment message
-                  2: `*${taskData.task}*`, // Assignee name
-                  3: `${dueDateTime}`, // Due date and time
-                };
+    //             console.log(
+    //               "inside handleUserInput newTaskList lengthh---->>>>??????????????",
+    //               newTaskList,
+    //               newTaskList.length
+    //             );
 
-                newTaskList.forEach((task, index) => {
-                  console.log("inside for each =======>>>>>??????", task);
+    //             const newTemplateData = {
+    //               1: `*${taskData.assignee.toUpperCase()}*`, // Task name for the assignment message
+    //               2: `*${taskData.task}*`, // Assignee name
+    //               3: `${dueDateTime}`, // Due date and time
+    //             };
 
-                  newTemplateData[`${index + 4}`] = `Due Date: ${formatDueDate(
-                    task.due_date
-                  )}`;
-                  newTemplateData[
-                    `${index + 4}_description`
-                  ] = `Task: ${task.task_details}`;
-                  newTemplateData[`task_${index}`] = task.taskId;
-                });
-                console.log(
-                  "inside handleUserInput taskList---->>>>???????",
-                  taskList
-                );
-                console.log(
-                  "newTemplateData:::::::::::::?????????????????",
-                  newTemplateData
-                );
+    //             newTaskList.forEach((task, index) => {
+    //               console.log("inside for each =======>>>>>??????", task);
 
-                try {
-                  if (newTaskList.length === 1) {
-                    console.log("inside task length which is ???????/ 1");
+    //               newTemplateData[`${index + 4}`] = `Due Date: ${formatDueDate(
+    //                 task.due_date
+    //               )}`;
+    //               newTemplateData[
+    //                 `${index + 4}_description`
+    //               ] = `Task: ${task.task_details}`;
+    //               newTemplateData[`task_${index}`] = task.taskId;
+    //             });
+    //             console.log(
+    //               "inside handleUserInput taskList---->>>>???????",
+    //               taskList
+    //             );
+    //             console.log(
+    //               "newTemplateData:::::::::::::?????????????????",
+    //               newTemplateData
+    //             );
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HX0b8b9af3fd2670f417ece43613474456" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length === 2) {
-                    console.log("inside task length which is ???????? 2");
+                // try {
+                //   if (newTaskList.length === 1) {
+                //     console.log("inside task length which is ???????/ 1");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HX8ee715730a9c24c1ec6b03f18ac02514" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length === 3) {
-                    console.log("inside task length which is ???????? 3");
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HX0b8b9af3fd2670f417ece43613474456" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length === 2) {
+                //     console.log("inside task length which is ???????? 2");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HX6b4ca428f2a728d5c675c283db46e557" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length === 4) {
-                    console.log("inside task length which is ???????? 4");
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HX8ee715730a9c24c1ec6b03f18ac02514" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length === 3) {
+                //     console.log("inside task length which is ???????? 3");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HXa31fad2405d6474f10d2ad500e37d0be" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length === 5) {
-                    console.log("inside task length which is ???????? 5");
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HX6b4ca428f2a728d5c675c283db46e557" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length === 4) {
+                //     console.log("inside task length which is ???????? 4");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HXef85754dd2baef9c97397018834b6399" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length === 6) {
-                    console.log("inside task length which is ???????? 6");
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HXa31fad2405d6474f10d2ad500e37d0be" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length === 5) {
+                //     console.log("inside task length which is ???????? 5");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HX2f80487110d0c437c8b965a673e18281" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length === 7) {
-                    console.log("inside task length which is ???????? 7");
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HXef85754dd2baef9c97397018834b6399" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length === 6) {
+                //     console.log("inside task length which is ???????? 6");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HXc45017415b2f1d0af104f8bbaedd7b60" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length === 8) {
-                    console.log("inside task length which is ???????? 8");
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HX2f80487110d0c437c8b965a673e18281" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length === 7) {
+                //     console.log("inside task length which is ???????? 7");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HX9fd8cac559d3a67331050c7f414dc14e" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length === 9) {
-                    console.log("inside task length which is ???????? 9");
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HXc45017415b2f1d0af104f8bbaedd7b60" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length === 8) {
+                //     console.log("inside task length which is ???????? 8");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HXe64beb6232b2584a1fb1888530c82ff3" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  } else if (newTaskList.length >= 10) {
-                    console.log("inside task length which is ???????? 10");
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HX9fd8cac559d3a67331050c7f414dc14e" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length === 9) {
+                //     console.log("inside task length which is ???????? 9");
 
-                    await sendMessage(
-                      `whatsapp:+${assignedPerson.phone}`,
-                      null, // No body for template
-                      true, // isTemplate flag
-                      newTemplateData,
-                      "HXb72a30c4660aa690be37396e409dadab" // Content SID for the List Picker template
-                    );
-                    console.log("List Picker message sent successfully");
-                  }
-                } catch (sendError) {
-                  console.error(
-                    "Error sending List Picker message:",
-                    sendError
-                  );
-                  await sendMessage(
-                    From,
-                    "⚠️ Error displaying task list. Please try again."
-                  );
-                  return;
-                }
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HXe64beb6232b2584a1fb1888530c82ff3" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   } else if (newTaskList.length >= 10) {
+                //     console.log("inside task length which is ???????? 10");
+
+                //     await sendMessage(
+                //       `whatsapp:+${assignedPerson.phone}`,
+                //       null, // No body for template
+                //       true, // isTemplate flag
+                //       newTemplateData,
+                //       "HXb72a30c4660aa690be37396e409dadab" // Content SID for the List Picker template
+                //     );
+                //     console.log("List Picker message sent successfully");
+                //   }
+                // } catch (sendError) {
+                //   console.error(
+                //     "Error sending List Picker message:",
+                //     sendError
+                //   );
+                //   await sendMessage(
+                //     From,
+                //     "⚠️ Error displaying task list. Please try again."
+                //   );
+                //   return;
+                // }
               
                 delete userSessions[From];
                 session.conversationHistory = [];
 
                 await fetch(
-                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
+                  "http://localhost:8000/update-reminder",
                   {
                     method: "POST",
                     headers: {
@@ -1223,18 +1227,28 @@ async function makeTwilioRequest() {
 
      if(req.body.ListId){
 
+      let actualId
+
+      if(req.body.ListId.startsWith("delete_")){
+       actualId = req.body.ListId.replace("delete_", "");
+
+      }
+      else{
+        actualId = req.body.ListId
+      }
+
            const { data: groupedData, error } = await supabase
       .from("grouped_tasks")
       .select("name, phone, tasks, employerNumber");
 
         const matchedRow = groupedData.find((row) =>
-      row.tasks?.some((task) => task.taskId === req.body.ListId)
+      row.tasks?.some((task) => task.taskId === actualId)
     )
 
       // Get the specific task
-    const matchedTask = matchedRow.tasks.find((task) => task.taskId === req.body.ListId);
+    const matchedTask = matchedRow.tasks.find((task) => task.taskId === actualId);
 
-    console.log('inside req.body.ListId showing matchedTask============>>>>>>>>>>>>>', matchedTask);
+    console.log('inside actualIdddd showing matchedTask============>>>>>>>>>>>>>', matchedTask);
     
             sendMessage(
                  From,
@@ -1255,7 +1269,57 @@ async function makeTwilioRequest() {
 
     const userNumber = req.body.From;
 
-    if (buttonPayload) {
+    if(buttonPayload==="show_all_tasks"){
+      console.log('im inside show all tasks button 📝📝📝📝📝', currentAssigneeName.toUpperCase());
+      
+      const { data, error } = await supabase
+                .from("grouped_tasks")
+                .select("tasks")
+                .eq("name", 'ASTIK')
+                .eq("employerNumber", From)
+
+                      console.log('sessions===>📌 📌 📌📌 📌 📌',data);
+
+                const showAllTaskList = data[0].tasks
+          .filter((task) => task.task_done === "Pending" || task.task_done == "Not Completed")
+
+          console.log('showAllTaskList====>', showAllTaskList);
+          
+          const showTaskTemplateData = {}
+
+          showAllTaskList.forEach((task, index)=> {
+             showTaskTemplateData[`${index + 4}`] = `Due Date: ${formatDueDate(
+                    task.due_date
+                  )}`;
+                  showTaskTemplateData[
+                    `${index + 4}_description`
+                  ] = `Task: ${task.task_details}`;
+                  showTaskTemplateData[`task_${index}`] = task.taskId;
+          })
+
+          if(showAllTaskList.length === 1){
+            console.log('inside length 1 📌 📌 📌 ');
+             await sendMessage(
+                      From,
+                      null, // No body for template
+                      true, // isTemplate flag
+                      showTaskTemplateData,
+                      "HXbba632ea32c1fd27f69da19f79d261e7" // Content SID for the List Picker template
+                    );
+          }
+          else if(showAllTaskList.length === 2){
+            console.log('inside length 2 📌 📌 📌 ');
+            await sendMessage(
+                      From,
+                      null, // No body for template
+                      true, // isTemplate flag
+                      showTaskTemplateData,
+                      "HXa3a206f2d5d4155fbcc90b7c0ccd8a22" // Content SID for the List Picker template
+                    );
+          }
+    }
+
+    else if (buttonPayload) {
       console.log("ButtonPayload received:", buttonPayload);
 
       // Parse ButtonPayload (format: yes_<taskId> or no_<taskId>)
@@ -1412,6 +1476,7 @@ async function makeTwilioRequest() {
   const updatedTasks = matchedRow.tasks.filter((task) => task.taskId !== taskId);
 
   // Step 4: Update the row in Supabase
+
   const { error: updateError } = await supabase
     .from("grouped_tasks")
     .update({ tasks: updatedTasks })
@@ -1427,14 +1492,147 @@ async function makeTwilioRequest() {
 
   console.log(`✅ Task with ID ${taskId} successfully deleted.`);
 
-  const twiml = new MessagingResponse();
-  twiml.message(`✅ Task successfully deleted.`);
-  res.setHeader("Content-Type", "text/xml");
-  return res.status(200).send(twiml.toString());
+  const filteredTasks = updatedTasks.filter(
+  (task) => task.task_done === "Pending" || task.task_done === "Not Completed"
+);
+
+console.log('filtered tasks 🧲🧲🧲🧲', filteredTasks);
+
+delete_templateData = {}
+
+ filteredTasks.forEach((task, index) => {
+    console.log('inside for each =======>>>>>', task);
+    
+    delete_templateData[`${index + 4}`] = `Due Date: ${formatDueDate(task.due_date)}`;
+    delete_templateData[`${index + 4}_description`] = `Task: ${task.task_details}`;
+    delete_templateData[`task_${index}`] = task.taskId; 
+  });
+
+  if(filteredTasks.length === 0){
+  console.log('length is 0 🧲');
+
+   await sendMessage(From, '✅ Task successfully deleted. There are currently no tasks available in database!');
+  
+}
+else if(filteredTasks.length === 1){
+  console.log('length is 1 🧲');
+
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HX66ec97bd29324b104f6328a540098f6b" // Content SID for the List Picker template
+      );
+  
+}
+else if(filteredTasks.length === 2){
+  console.log('length is 2 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HX724615cc471446d22765bb53f2f869d8" // Content SID for the List Picker template
+      );
+}
+else if(filteredTasks.length === 3){
+  console.log('length is 3 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HXdf40ebbc99d2cd0933d0ff791f1857eb" // Content SID for the List Picker template
+      );
+}
+else if(filteredTasks.length === 4){
+  console.log('length is 4 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HXe31d086b68bc6cf2fe302cd7902013e4" // Content SID for the List Picker template
+      );
+}
+else if(filteredTasks.length === 5){
+  console.log('length is 5 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HX5ae2e6433735e9789118a5aed92a9dd2" // Content SID for the List Picker template
+      );
+}
+else if(filteredTasks.length === 6){
+  console.log('length is 6 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HX4086c9ed84ac08d2a617fa26adb78443" // Content SID for the List Picker template
+      );
+}
+else if(filteredTasks.length === 7){
+  console.log('length is 7 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HX152d8bd3304ad449f962c4aae7541b68" // Content SID for the List Picker template
+      );
+}
+else if(filteredTasks.length === 8){
+  console.log('length is 8 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HXbe50bd569fad768cdafcfc9ad69a2ec4" // Content SID for the List Picker template
+      );
+}
+
+else if(filteredTasks.length === 9){
+  console.log('length is 9 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HXc8003404994f074a484c120e4e91d63c" // Content SID for the List Picker template
+      );
+}
+
+else if(filteredTasks.length >= 10){
+  console.log('length is >= 10 🧲🧲');
+  
+   await sendMessage(
+        From,
+        null, // No body for template
+        true, // isTemplate flag
+        delete_templateData,
+        "HX50625f295382999d4988676e6b519eca" // Content SID for the List Picker template
+      );
+}
+return
   }
 
       if (!taskId || !["yes", "no"].includes(response.toLowerCase())) {
         console.error("Invalid ButtonPayload format:", buttonPayload);
+            const twiml = new MessagingResponse();
         twiml.message(
           "Error: Invalid response. Please use the provided buttons."
         );
