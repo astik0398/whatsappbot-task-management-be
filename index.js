@@ -1271,7 +1271,7 @@ async function makeTwilioRequest() {
 
     if(buttonPayload==="show_all_tasks"){
       console.log('im inside show all tasks button 📝📝📝📝📝', currentAssigneeName.toUpperCase());
-      
+      return
       const { data, error } = await supabase
                 .from("grouped_tasks")
                 .select("tasks")
