@@ -884,7 +884,7 @@ Thank you for providing the task details! Here's a quick summary:
                 delete userSessions[From];
                 session.conversationHistory = [];
 
-                await fetch("https://whatsappbot-task-management-be-production.up.railway.app/update-reminder", {
+                await fetch("http://localhost:8000/update-reminder", {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
@@ -2572,7 +2572,7 @@ app.get("/auth/google/callback", async (req, res) => {
 });
 
 async function initializeReminders() {
-  console.log("Initializing reminders from database...");
+  console.log("🚫Initializing reminders from database...");
   try {
     // Fetch all reminders from the reminders table
     const { data: reminders, error } = await supabase
@@ -2589,7 +2589,7 @@ async function initializeReminders() {
       return;
     }
 
-    console.log(`Found ${reminders.length} reminders to initialize.`);
+    console.log(`🚫Found ${reminders.length} reminders to initialize.`);
 
     for (const reminder of reminders) {
       const { taskId, reminder_frequency, nextReminderTime } = reminder;
@@ -2615,7 +2615,7 @@ async function initializeReminders() {
       );
 
       if (!matchedRow) {
-        console.log(`No task found for taskId ${taskId}, skipping reminder.`);
+        console.log(`🚫No task found for taskId ${taskId}, skipping reminder.`);
         continue;
       }
 
@@ -2638,35 +2638,58 @@ async function initializeReminders() {
       const reminderDateTime =
         reminder_type === "one-time" ? matchedTask.reminderDateTime : null;
 
-      // Reuse sendReminder from /update-reminder
+      // MODIFIED: Updated sendReminder to handle plain text or special reminder based on due time
       const sendReminder = async () => {
         const currentTime = moment().tz("Asia/Kolkata");
         console.log(
-          `Sending reminder for task ${taskId} at ${currentTime.format(
+          `🚫Sending reminder for task ${taskId} at ${currentTime.format(
             "YYYY-MM-DD HH:mm:ss"
           )} IST`
         );
 
         if (!matchedRow || !matchedTask) {
-          console.log(`Task ${taskId} no longer valid, stopping reminder.`);
+          console.log(`🚫Task ${taskId} no longer valid, stopping reminder.`);
           cronJobs.delete(taskId);
           return;
         }
 
+        // NEW: Check if due time is within 15 minutes for recurring reminders
+        let templateSid = process.env.TWILIO_REMINDER_TEMPLATE_SID;
+        let messageParams = {
+          1: matchedTask.task_details,
+          2: matchedTask.due_date,
+          3: taskId,
+        };
+
+        if (reminder_type === "recurring") {
+          const dueTime = moment.tz(
+            matchedTask.due_date,
+            "YYYY-MM-DD HH:mm",
+            "Asia/Kolkata"
+          );
+          const timeToDue = dueTime.diff(currentTime, "minutes");
+          
+          if (timeToDue > 15) {
+            // NEW: Use plain text template for recurring reminders when due time is more than 15 minutes away
+            templateSid = process.env.TWILIO_REMINDER_PLAIN_TEXT;
+            messageParams = {
+              1: matchedTask.task_details,
+              2: extractDate(matchedTask.due_date),
+              3: extractTime(matchedTask.due_date),
+            };
+          }
+        }
+
         console.log(
-          `Sending reminder to: ${matchedRow.phone} for task ${taskId}`
+          `🚫Sending reminder to: ${matchedRow.phone} for task ${taskId} using template ${templateSid}`
         );
 
         await sendMessage(
           `whatsapp:+${matchedRow.phone}`,
           null,
           true,
-          {
-            1: matchedTask.task_details,
-            2: matchedTask.due_date,
-            3: taskId,
-          },
-          process.env.TWILIO_REMINDER_TEMPLATE_SID
+          messageParams,
+          templateSid
         );
 
         userSessions[`whatsapp:+${matchedRow.phone}`] = {
@@ -2711,7 +2734,7 @@ async function initializeReminders() {
 
         if (delay <= 0) {
           console.log(
-            `One-time reminder for task ${taskId} is in the past, sending now.`
+            `🚫One-time reminder for task ${taskId} is in the past, sending now.`
           );
           await sendReminder();
           continue;
@@ -2723,7 +2746,7 @@ async function initializeReminders() {
 
         cronJobs.set(taskId, { type: "one-time", timeoutId });
         console.log(
-          `Scheduled one-time reminder for task ${taskId} at ${reminderTime.format(
+          `🚫Scheduled one-time reminder for task ${taskId} at ${reminderTime.format(
             "YYYY-MM-DD HH:mm:ss"
           )} IST`
         );
@@ -2735,7 +2758,7 @@ async function initializeReminders() {
 
         if (!match) {
           console.log(
-            `Invalid reminder frequency for task ${taskId}: ${reminder_frequency}`
+            `🚫Invalid reminder frequency for task ${taskId}: ${reminder_frequency}`
           );
           continue;
         }
@@ -2771,10 +2794,96 @@ async function initializeReminders() {
 
         if (delay <= 0) {
           console.log(
-            `Next reminder for task ${taskId} is in the past, sending now and scheduling next.`
+            `🚫Next reminder for task ${taskId} is in the past, sending now and scheduling next.`
           );
           await sendReminder();
           continue;
+        }
+
+        // NEW: Schedule special 15-minute-before-due reminder for recurring tasks
+        const dueTime = moment.tz(
+          matchedTask.due_date,
+          "YYYY-MM-DD HH:mm",
+          "Asia/Kolkata"
+        );
+        const fifteenMinutesBeforeDue = dueTime.clone().subtract(15, "minutes");
+        const delayForSpecialReminder = fifteenMinutesBeforeDue.diff(now);
+
+        if (delayForSpecialReminder > 0) {
+          const specialTimeoutId = setTimeout(async () => {
+            console.log(
+              `🚫Sending 15-minute-before-due-date reminder for task ${taskId}`
+            );
+
+            const { data: groupedDataForSpecial } = await supabase
+              .from("grouped_tasks")
+              .select("name, phone, tasks, employerNumber");
+
+            const matchedRowSpecial = groupedDataForSpecial.find((row) =>
+              row.tasks?.some((task) => task.taskId === taskId)
+            );
+            if (!matchedRowSpecial) {
+              console.log(`🚫No task found for taskId ${taskId}, skipping special reminder.`);
+              return;
+            }
+
+            const matchedTaskSpecial = matchedRowSpecial.tasks.find(
+              (task) => task.taskId === taskId
+            );
+
+            await sendMessage(
+              `whatsapp:+${matchedRowSpecial.phone}`,
+              null,
+              true,
+              {
+                1: matchedTaskSpecial.task_details,
+                2: matchedTaskSpecial.due_date,
+                3: taskId,
+              },
+              process.env.TWILIO_REMINDER_TEMPLATE_SID
+            );
+
+            const job = cronJobs.get(taskId);
+            if (job?.timeoutId) {
+              clearTimeout(job.timeoutId);
+              console.log(
+                `🚫Cleared recurring reminder timeout for task ${taskId}`
+              );
+            }
+            cronJobs.delete(taskId);
+
+            // Update task to stop further reminders
+            const { data: existingData } = await supabase
+              .from("grouped_tasks")
+              .select("tasks")
+              .eq("name", matchedRowSpecial.name.toUpperCase())
+              .eq("employerNumber", matchedRowSpecial.employerNumber)
+              .single();
+
+            const updatedTasks = existingData.tasks.map((task) =>
+              task.taskId === taskId ? { ...task } : task
+            );
+
+            await supabase
+              .from("grouped_tasks")
+              .update({ tasks: updatedTasks })
+              .eq("name", matchedRowSpecial.name.toUpperCase())
+              .eq("employerNumber", matchedRowSpecial.employerNumber);
+
+            console.log(
+              `🚫Stopped further reminders for task ${taskId} after special 15-minute message`
+            );
+          }, delayForSpecialReminder);
+
+          console.log(
+            ` 🚫Scheduled 15-minute-before-due reminder for task ${taskId} at ${fifteenMinutesBeforeDue.format(
+              "YYYY-MM-DD HH:mm:ss"
+            )} IST`
+          );
+        } else {
+          console.log(
+            ` 🚫Skipping 15-minute-before-due-date reminder for task ${taskId} as time is already past.`
+          );
         }
 
         if (unit === "minutes" || unit === "hours") {
@@ -2784,7 +2893,7 @@ async function initializeReminders() {
               .tz("Asia/Kolkata")
               .add(quantity, unit);
             console.log(
-              `Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
+              `🚫Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
                 "YYYY-MM-DD HH:mm:ss"
               )} IST`
             );
@@ -2814,7 +2923,7 @@ async function initializeReminders() {
             timeoutId,
           });
           console.log(
-            `Scheduled recurring reminder for task ${taskId} at ${nextReminder.format(
+            `🚫Scheduled recurring reminder for task ${taskId} at ${nextReminder.format(
               "YYYY-MM-DD HH:mm:ss"
             )} IST with frequency ${reminder_frequency}`
           );
@@ -2823,7 +2932,7 @@ async function initializeReminders() {
           const hour = nextReminder.hour();
           const cronExpression = `${minute} ${hour} */${quantity} * *`;
 
-          setTimeout(async () => {
+          const timeoutId = setTimeout(async () => {
             await sendReminder();
             const cronJob = cron.schedule(cronExpression, sendReminder, {
               timezone: "Asia/Kolkata",
@@ -2834,7 +2943,7 @@ async function initializeReminders() {
               type: "recurring",
             });
             console.log(
-              `Scheduled recurring reminders for task ${taskId} with cron ${cronExpression} starting at ${nextReminder.format(
+              `🚫Scheduled recurring reminders for task ${taskId} with cron ${cronExpression} starting at ${nextReminder.format(
                 "YYYY-MM-DD HH:mm:ss"
               )} IST`
             );
@@ -2843,6 +2952,7 @@ async function initializeReminders() {
           cronJobs.set(taskId, {
             type: "recurring",
             frequency: reminder_frequency,
+            timeoutId,
           });
         }
       }
@@ -3553,5 +3663,5 @@ app.post("/update-reminder", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
-  // initializeReminders();
+  initializeReminders();
 });
