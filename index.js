@@ -1500,10 +1500,152 @@ async function makeTwilioRequest() {
 
         console.log(`✅ Task with ID ${taskId} marked as Completed.`);
 
-        const twiml = new MessagingResponse();
-        twiml.message("✅ Task has been marked as *Completed*");
-        res.setHeader("Content-Type", "text/xml");
-        return res.status(200).send(twiml.toString());
+        const updatedFilteredTasks = updatedTasks.filter(
+          (task) =>
+            task.task_done === "Pending" || task.task_done === "Not Completed"
+        );
+
+         console.log("updatedFilteredTasks tasks after completion 🧲🧲🧲🧲", updatedFilteredTasks);
+
+        completed_templateData = {};
+
+        updatedFilteredTasks.forEach((task, index) => {
+          console.log("inside for each =======>>>>>", task);
+
+          completed_templateData[`${index + 4}`] = `Due Date: ${formatDueDate(
+            task.due_date
+          )}`;
+          completed_templateData[
+            `${index + 4}_description`
+          ] = `Task: ${task.task_details}`;
+          completed_templateData[`task_${index}`] = task.taskId;
+        });
+
+        if (updatedFilteredTasks.length === 0) {
+          console.log("length is 0 🧲");
+
+          await sendMessage(
+            From,
+            "✅ Task has been marked as *Completed*"
+          );
+        } else if (updatedFilteredTasks.length === 1) {
+          console.log("length is 1 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HX506bd2d2203a53e5f10e9c31f84f8937" // Content SID for the List Picker template
+          );
+        } 
+        else if (updatedFilteredTasks.length === 2) {
+          console.log("length is 2 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HXb79d20bc198cfc9512dd96fdd02b109f" // Content SID for the List Picker template
+          );
+        } 
+        else if (updatedFilteredTasks.length === 3) {
+          console.log("length is 3 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HX73edc281f75b87c66e3fc19e83df9c2b" // Content SID for the List Picker template
+          );
+        } 
+         else if (updatedFilteredTasks.length === 4) {
+          console.log("length is 4 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HXa7fcc52aefb4a11bb4b693bb4a1fafad" // Content SID for the List Picker template
+          );
+        }
+
+         else if (updatedFilteredTasks.length === 5) {
+          console.log("length is 5 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HX6eca0139bb905f5209c644a671ebc4e0" // Content SID for the List Picker template
+          );
+        }
+
+          else if (updatedFilteredTasks.length === 6) {
+          console.log("length is 6 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HX9292a578b0fe74c6a0a0d8acda77b35f" // Content SID for the List Picker template
+          );
+        }
+
+         else if (updatedFilteredTasks.length === 7) {
+          console.log("length is 7 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HX3fdf00cc3d1843c1405ba095c668f75e" // Content SID for the List Picker template
+          );
+        }
+
+          else if (updatedFilteredTasks.length === 8) {
+          console.log("length is 8 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HX34f276be3b6b9de6c5d694dec8855a6e" // Content SID for the List Picker template
+          );
+        }
+
+         else if (updatedFilteredTasks.length === 9) {
+          console.log("length is 9 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HX6be1d3c4e9e4afef531f2c79dc0b1749" // Content SID for the List Picker template
+          );
+        }
+
+         else if (updatedFilteredTasks.length >= 10) {
+          console.log("length is >= 10 🧲");
+
+          await sendMessage(
+            From,
+            null, // No body for template
+            true, // isTemplate flag
+            completed_templateData,
+            "HX63ac3eb36b74d41b1b64f6c207b84507" // Content SID for the List Picker template
+          );
+        }
+
+        return
       } else if (response === "noaction") {
         const twiml = new MessagingResponse();
         twiml.message("❌Got it! No response has been recorded for this task");
