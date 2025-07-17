@@ -884,7 +884,7 @@ Thank you for providing the task details! Here's a quick summary:
                 delete userSessions[From];
                 session.conversationHistory = [];
 
-                await fetch("https://whatsappbot-task-management-be-production.up.railway.app/update-reminder", {
+                await fetch("http://localhost:8000/update-reminder", {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
@@ -1288,6 +1288,8 @@ async function makeTwilioRequest() {
         process.env.TWILIO_LIST_PICKER_FOLLOW_UP
       );
 
+      console.log('task delete message sent 📌📌');
+      
       return;
     }
 
@@ -1456,7 +1458,7 @@ async function makeTwilioRequest() {
 
         const { data: groupedData, error: fetchError } = await supabase
           .from("grouped_tasks")
-          .select("id, tasks");
+          .select("id, tasks, name, phone, employerNumber");
 
         if (fetchError) {
           console.error("❌ Error fetching grouped_tasks:", fetchError);
@@ -1464,12 +1466,14 @@ async function makeTwilioRequest() {
           twiml.message("Error: Could not retrieve task data.");
           res.setHeader("Content-Type", "text/xml");
           return res.status(200).send(twiml.toString());
-        }
+        }        
 
         // Step 2: Find the row containing the task
         const matchedRow = groupedData.find((row) =>
           row.tasks?.some((task) => task.taskId === taskId)
         );
+
+                console.log('matched row inside manage task ❌❌❌❌', matchedRow);
 
         if (!matchedRow) {
           console.error(`❌ Task with ID ${taskId} not found.`);
@@ -1497,6 +1501,9 @@ async function makeTwilioRequest() {
           res.setHeader("Content-Type", "text/xml");
           return res.status(200).send(twiml.toString());
         }
+
+                const completedTaskAssignor = matchedRow.tasks.find((task) => task.taskId === taskId);
+console.log("✅✅ Task being marked as completed assignor:", completedTaskAssignor);
 
         console.log(`✅ Task with ID ${taskId} marked as Completed.`);
 
@@ -1645,6 +1652,17 @@ async function makeTwilioRequest() {
           );
         }
 
+         await sendMessage(
+                  matchedRow.employerNumber,
+                  null, // No body for template
+                  true, // isTemplate flag
+                  {
+                    1: `*${completedTaskAssignor.task_details}*`,
+                    2: `*${matchedRow.name}*`
+                  },
+                  process.env.TWILIO_COMPLETED_TASK_ASSIGNOR
+                );
+
         return
       } else if (response === "noaction") {
         const twiml = new MessagingResponse();
@@ -1660,7 +1678,7 @@ async function makeTwilioRequest() {
 
         const { data: groupedData, error: fetchError } = await supabase
           .from("grouped_tasks")
-          .select("id, tasks");
+          .select("id, tasks, phone, name");
 
         if (fetchError) {
           console.error("❌ Error fetching grouped_tasks:", fetchError);
@@ -1674,6 +1692,9 @@ async function makeTwilioRequest() {
         const matchedRow = groupedData.find((row) =>
           row.tasks?.some((task) => task.taskId === taskId)
         );
+
+        console.log('matchedRow for completed tasks 🧲🧲', matchedRow);
+        
 
         if (!matchedRow) {
           console.error(`❌ Task with ID ${taskId} not found.`);
@@ -1701,6 +1722,10 @@ async function makeTwilioRequest() {
           res.setHeader("Content-Type", "text/xml");
           return res.status(200).send(twiml.toString());
         }
+
+        const completedTask = matchedRow.tasks.find((task) => task.taskId === taskId);
+console.log("✅✅✅ Task being marked as completed:", completedTask);
+
 
         console.log(`✅ Task with ID ${taskId} marked as Completed.`);
 
@@ -1842,13 +1867,24 @@ async function makeTwilioRequest() {
             "HXe8fbc1b8e7bbc348cf945fd345d6047a" // Content SID for the List Picker template
           );
         }
+
+                sendMessage(
+                  `whatsapp:+${matchedRow.phone}`,
+                  null, // No body for template
+                  true, // isTemplate flag
+                  {
+                    1: `*${completedTask.task_details}*`,
+                  },
+                  process.env.TWILIO_COMPLETED_TASK_ASSIGNEE
+                );
+
         return
       } else if (response === "delete") {
         console.log(`🗑️ Delete button clicked for Task ID: ${taskId}`);
 
         const { data: groupedData, error: fetchError } = await supabase
           .from("grouped_tasks")
-          .select("id, tasks");
+          .select("id, tasks, phone");
 
         if (fetchError) {
           console.error("❌ Error fetching grouped_tasks:", fetchError);
@@ -1863,6 +1899,9 @@ async function makeTwilioRequest() {
           row.tasks?.some((task) => task.taskId === taskId)
         );
 
+        console.log('matched row after delete 📌📌', matchedRow);
+        
+
         if (!matchedRow) {
           console.error(`❌ Task with ID ${taskId} not found.`);
           const twiml = new MessagingResponse();
@@ -1870,6 +1909,9 @@ async function makeTwilioRequest() {
           res.setHeader("Content-Type", "text/xml");
           return res.status(200).send(twiml.toString());
         }
+
+        const deletedTask = matchedRow.tasks.find((task) => task.taskId === taskId);
+console.log("🗑️ Task being deleted:", deletedTask);
 
         // Step 3: Filter out the task to delete
         const updatedTasks = matchedRow.tasks.filter(
@@ -2022,6 +2064,17 @@ async function makeTwilioRequest() {
             "HX50625f295382999d4988676e6b519eca" // Content SID for the List Picker template
           );
         }
+
+        await sendMessage(
+                  `whatsapp:+${matchedRow.phone}`,
+                  null, // No body for template
+                  true, // isTemplate flag
+                  {
+                    1: `*${deletedTask.task_details}*`,
+                  },
+                  process.env.TWILIO_DELETE_TASK_ASSIGNEE
+                );
+
         return;
       }
 
