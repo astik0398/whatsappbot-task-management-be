@@ -2888,7 +2888,7 @@ async function initializeReminders() {
         );
 
         userSessions[`whatsapp:+${matchedRow.phone}`] = {
-          step: 5,
+          step: 15,
           task: matchedTask.task_details,
           assignee: matchedRow.name,
           fromNumber: matchedRow.employerNumber,
