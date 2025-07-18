@@ -2268,6 +2268,25 @@ console.log("🗑️ Task being deleted:", deletedTask);
     ) {
       console.log("MEETING FUNC TRIGGERED!!!");
 
+        if (incomingMsg.toLowerCase().includes("task") || incomingMsg.toLowerCase().includes("assign")) {
+    // Reset meeting session to allow task assignment
+
+            console.log('MEEEETING FUNCTION TRIGGERED!!!! ASSIGNNN TASKKK WORD DETECTED!!!!');
+
+    delete sessions[userNumber];
+    userSessions[userNumber] = {
+      step: 0,
+      task: "",
+      assignee: "",
+      dueDate: "",
+      dueTime: "",
+      assignerNumber: userNumber,
+      conversationHistory: [],
+    };
+    await handleUserInput(incomingMsg, userNumber);
+    return res.status(200).send("<Response></Response>");
+  }
+  
       const userMsg = req.body.Body;
 
       const refreshToken = await getRefreshToken(userNumber);
