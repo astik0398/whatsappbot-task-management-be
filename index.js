@@ -366,6 +366,46 @@ EXAMPLES:
 - If a user is asked about task, assignee and due date but user only only task and due date then it should again ask the user asking about the assignee since they did not sent that.
 - For inputs like "tell Astik to test twilio", interpret assignee as "Astik" and task as "Test Twilio".
 
+For Reminders:
+- For one-time reminders, set reminder_type to "one-time", reminder_frequency to null, and reminderDateTime to the user-specified reminder date and time in "YYYY-MM-DD HH:mm" format.
+- For recurring reminders, set reminderDateTime to null.
+- Do **not** assume the reminder time is tied to the due date for one-time reminders; it should be based on user input (e.g., "20th May at 5PM").
+
+After having all the details you can send the summary of the response so that user can have a look at it.
+
+For due dates:
+- If the user provides a day and month (e.g., "28th Feb" or "28 February"), convert it into the current year (e.g., "2025-02-28").
+- If the user provides a full date (e.g., "28th Feb 2025"), return it as is.
+- If no year is provided, assume the current year which is 2025 and return the date in the format YYYY-MM-DD.
+
+
+For dynamic date terms:
+- Today's date is ${todayDate}
+- If the user says "today," convert that into **the current date** (e.g., if today is April 5, 2025, it should return "2025-04-05").
+- If the user says "tomorrow," convert that into **the next day’s date** (e.g., if today is April 5, 2025, "tomorrow" should be "2025-04-06").
+- If the user says "next week," calculate the date of the same day in the following week (e.g., if today is April 5, 2025, "next week" would be April 12, 2025).
+- If the user provides a phrase like "in X days," calculate the due date accordingly (e.g., "in 3 days" should become "2025-04-08").
+- If the user provides terms like "next month," calculate the due date for the same day of the next month (e.g., if today is April 5, 2025, "next month" should become "2025-05-05").
+- If the user says a phrase like "tonight 8pm" or "tonight at 8pm", treat it as a combination of today's date (${todayDate}) and the time (e.g., "20:00"). Do not ask again for due date or due time.
+- If no specific time is provided with "tonight", prompt for a time.
+
+For due times:
+- Current time is ${currentTime}
+- If the user provides a time in "AM/PM" format (e.g., "6 PM" or "6 AM"), convert it into the 24-hour format:
+  - "6 AM" becomes "06:00"
+  - "6 PM" becomes "18:00"
+- Ensure the output time is always in the 24-hour format (HH:mm).
+- If the user says "next X hours" or "in X minutes," calculate the **current time** accordingly(e.g., if current time is 5:40 pm then "next 5 hours" will be 10:40 pm).
+
+Conversation history: ${JSON.stringify(conversationHistory)}
+User input: ${userMessage}
+
+The "Conversation history" contains previous user inputs and must be used to extract missing task information.
+- Always combine "User input" with "Conversation history" to determine if all required task details are available.
+- Treat multiple user messages as part of a single conversation thread.
+- Look through the full conversation history to fill in missing fields before prompting the user again.
+- Do NOT ask for a detail if it is already clearly present in earlier messages.
+
 IMPORTANT:
 - Once all details are collected, return **ONLY** with a JSON object which will be used for backend purpose.
 - Do **not** include any extra text before or after the JSON.
@@ -380,37 +420,6 @@ IMPORTANT:
 "reminder_frequency": "<reminder_frequency or null for one-time>",
 "reminderDateTime": "<YYYY-MM-DD HH:mm or null for recurring>"
 }
-- For one-time reminders, set reminder_type to "one-time", reminder_frequency to null, and reminderDateTime to the user-specified reminder date and time in "YYYY-MM-DD HH:mm" format.
-- For recurring reminders, set reminderDateTime to null.
-- Do **not** assume the reminder time is tied to the due date for one-time reminders; it should be based on user input (e.g., "20th May at 5PM").
-
-After having all the details you can send the summary of the response so that user can have a look at it.
-For due dates:
-- If the user provides a day and month (e.g., "28th Feb" or "28 February"),
-convert it into the current year (e.g., "2025-02-28").
-- If the user provides a full date (e.g., "28th Feb 2025"), return it as is.
-- If no year is provided, assume the current year which is 2025 and return
-the date in the format YYYY-MM-DD.
-
-For dynamic date terms:
-- Today's date is ${todayDate}
-- If the user says "today," convert that into **the current date** (e.g., if today is April 5, 2025, it should return "2025-04-05").
-- If the user says "tomorrow," convert that into **the next day’s date** (e.g., if today is April 5, 2025, "tomorrow" should be "2025-04-06").
-- If the user says "next week," calculate the date of the same day in the following week (e.g., if today is April 5, 2025, "next week" would be April 12, 2025).
-- If the user provides a phrase like "in X days," calculate the due date accordingly (e.g., "in 3 days" should become "2025-04-08").
-- If the user provides terms like "next month," calculate the due date for the same day of the next month (e.g., if today is April 5, 2025, "next month" should become "2025-05-05").
-
-For due times:
-- Current time is ${currentTime}
-- If the user provides a time in "AM/PM" format (e.g., "6 PM" or "6 AM"),
-convert it into the 24-hour format:
-- "6 AM" becomes "06:00"
-- "6 PM" becomes "18:00"
-- Ensure the output time is always in the 24-hour format (HH:mm).
-- If the user says "next X hours" or "in X minutes," calculate the **current time** accordingly(e.g., if current time is 5:40 pm then "next 5 hours" will be 10:40 pm).
-
-Conversation history: ${JSON.stringify(conversationHistory)}
-User input: ${userMessage}
 `;
     console.log("we are here===> 3");
     try {
@@ -3877,5 +3886,5 @@ app.post("/update-reminder", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
-  initializeReminders();
+  // initializeReminders();
 });
