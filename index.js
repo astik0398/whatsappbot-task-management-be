@@ -441,10 +441,10 @@ async function handleUserInput(userMessage, From) {
     newtaskList.forEach((task, index) => {
       console.log("inside for each =======>>>>>", task);
 
-      newTemplateMsg[`${index + 4}`] = `Due Date: ${formatDueDate(
+      newTemplateMsg[`${index + 4}`] = `${formatDueDate(
         task.due_date
       )}`;
-      newTemplateMsg[`${index + 4}_description`] = `Task: ${task.task_details}`;
+      newTemplateMsg[`${index + 4}_description`] = `${task.task_details}`;
       newTemplateMsg[`task_${index}`] = task.taskId;
     });
 
@@ -872,12 +872,12 @@ Thank you for providing the task details! Here's a quick summary:
                 taskList.forEach((task, index) => {
                   console.log("inside for each =======>>>>>", task);
 
-                  templateData[`${index + 4}`] = `Due Date: ${formatDueDate(
+                  templateData[`${index + 4}`] = `${formatDueDate(
                     task.due_date
                   )}`;
                   templateData[
                     `${index + 4}_description`
-                  ] = `Task: ${task.task_details}`;
+                  ] = `${task.task_details}`;
                   templateData[`task_${index}`] = task.taskId;
                 });
                 console.log(
@@ -1483,12 +1483,12 @@ async function makeTwilioRequest() {
       const showTaskTemplateData = {};
 
       showAllTaskList.forEach((task, index) => {
-        showTaskTemplateData[`${index + 4}`] = `Due Date: ${formatDueDate(
+        showTaskTemplateData[`${index + 4}`] = `${formatDueDate(
           task.due_date
         )}`;
         showTaskTemplateData[
           `${index + 4}_description`
-        ] = `Task: ${task.task_details}`;
+        ] = `${task.task_details}`;
         showTaskTemplateData[`task_${index}`] = task.taskId;
       });
 
@@ -1709,12 +1709,12 @@ async function makeTwilioRequest() {
         updatedFilteredTasks.forEach((task, index) => {
           console.log("inside for each =======>>>>>", task);
 
-          completed_templateData[`${index + 4}`] = `Due Date: ${formatDueDate(
+          completed_templateData[`${index + 4}`] = `${formatDueDate(
             task.due_date
           )}`;
           completed_templateData[
             `${index + 4}_description`
-          ] = `Task: ${task.task_details}`;
+          ] = `${task.task_details}`;
           completed_templateData[`task_${index}`] = task.taskId;
         });
 
@@ -1916,12 +1916,12 @@ async function makeTwilioRequest() {
         updatedFilteredTasks.forEach((task, index) => {
           console.log("inside for each =======>>>>>", task);
 
-          completed_templateData[`${index + 4}`] = `Due Date: ${formatDueDate(
+          completed_templateData[`${index + 4}`] = `${formatDueDate(
             task.due_date
           )}`;
           completed_templateData[
             `${index + 4}_description`
-          ] = `Task: ${task.task_details}`;
+          ] = `${task.task_details}`;
           completed_templateData[`task_${index}`] = task.taskId;
         });
 
@@ -2111,12 +2111,12 @@ async function makeTwilioRequest() {
         filteredTasks.forEach((task, index) => {
           console.log("inside for each =======>>>>>", task);
 
-          delete_templateData[`${index + 4}`] = `Due Date: ${formatDueDate(
+          delete_templateData[`${index + 4}`] = `${formatDueDate(
             task.due_date
           )}`;
           delete_templateData[
             `${index + 4}_description`
-          ] = `Task: ${task.task_details}`;
+          ] = `${task.task_details}`;
           delete_templateData[`task_${index}`] = task.taskId;
         });
 
@@ -3721,6 +3721,11 @@ app.post("/update-reminder", async (req, res) => {
             .eq("name", matchedRowSpecial.name.toUpperCase())
             .eq("employerNumber", matchedRowSpecial.employerNumber);
 
+            await supabase.from("reminders").delete().eq("taskId", taskId);
+          console.log(
+            `Deleted reminder for task ${taskId} from Supabase after special 15-minute message`
+          );
+
           console.log(
             `Stopped further reminders for task ${taskId} after special 15-minute message`
           );
@@ -3854,6 +3859,11 @@ app.post("/update-reminder", async (req, res) => {
             .update({ tasks: updatedTasks })
             .eq("name", matchedRowSpecial.name.toUpperCase())
             .eq("employerNumber", matchedRowSpecial.employerNumber);
+
+            await supabase.from("reminders").delete().eq("taskId", taskId);
+          console.log(
+            `Deleted reminder for task ${taskId} from Supabase after special 15-minute message`
+          );
 
           console.log(
             `Stopped further reminders for task ${taskId} after special 15-minute message`
@@ -3993,6 +4003,11 @@ app.post("/update-reminder", async (req, res) => {
             .eq("name", matchedRowSpecial.name.toUpperCase())
             .eq("employerNumber", matchedRowSpecial.employerNumber);
 
+            await supabase.from("reminders").delete().eq("taskId", taskId);
+          console.log(
+            `Deleted reminder for task ${taskId} from Supabase after special 15-minute message`
+          );
+          
           console.log(
             `Stopped further reminders for task ${taskId} after special 15-minute message`
           );
@@ -4017,31 +4032,6 @@ app.post("/update-reminder", async (req, res) => {
       console.log("Unsupported frequency unit:", unit);
       return res.status(400).json({ message: "Unsupported frequency unit" });
     }
-
-    // console.log(`Cron expression for task==> 1 ${taskId}: ${cronExpression}`);
-
-    // setTimeout(async () => {
-    //   await sendReminder();
-
-    //   // Schedule recurring reminders in Asia/Kolkata
-    //   const cronJob = cron.schedule(cronExpression, sendReminder, {
-    //     timezone: "Asia/Kolkata", // Explicitly set to IST
-    //   });
-    //   cronJobs.set(taskId, { cron: cronJob, frequency: reminder_frequency });
-    //   console.log(
-    //     `Scheduled recurring reminders for task ${taskId} with cron ${cronExpression} starting after first reminder at ${firstReminderTime.format(
-    //       "YYYY-MM-DD HH:mm:ss"
-    //     )} IST`
-    //   );
-    // }, delay);
-
-    // cronJobs.set(taskId, { type: "recurring", frequency: reminder_frequency });
-    // console.log(
-    //   `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
-    //     "YYYY-MM-DD HH:mm:ss"
-    //   )} IST with frequency ${reminder_frequency}`
-    // );
-    // return res.status(200).json({ message: "Recurring reminder scheduled" });
   }
 });
 
