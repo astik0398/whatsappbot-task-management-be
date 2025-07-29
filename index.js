@@ -56,7 +56,10 @@ let currentTime = "";
 const sessions = {};
 
 function formatDueDate(dueDateTime) {
-  const date = new Date(dueDateTime);
+
+    console.log('dueDateTime--->>',dueDateTime);
+
+  const date = moment(dueDateTime, "DD-MM-YYYY HH:mm").toDate()
 
   const day = date.getDate();
   const monthIndex = date.getMonth();
@@ -95,6 +98,9 @@ function formatDueDate(dueDateTime) {
   const formattedDate = `${getOrdinalSuffix(day)} ${
     monthNames[monthIndex]
   } ${year}`;
+
+  console.log('formattedDate--->>',formattedDate);
+  
   return formattedDate;
 }
 
@@ -134,7 +140,7 @@ const getCurrentDate = () => {
   const minutes = String(now.get("minute")).padStart(2, "0");
 
   // console.log(`${year}-${month}-${day} ${hours}:${minutes}`);
-  return `${year}-${month}-${day} ${hours}:${minutes}`;
+  return `${day}-${month}-${year} ${hours}:${minutes}`;
 };
 
 async function getRefreshToken(userNumber) {
@@ -348,7 +354,7 @@ async function handleUserInput(userMessage, From) {
 
     // Validate input format: YYYY-MM-DD HH:MM
     const deadlineInput = userMessage.trim();
-    const isValidFormat = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(deadlineInput);
+const isValidFormat = /^\d{2}-\d{2}-\d{4} \d{1,2}:\d{2}$/.test(deadlineInput);
 
     if (!isValidFormat) {
       await sendMessage(
@@ -357,6 +363,14 @@ async function handleUserInput(userMessage, From) {
       );
       return;
     }
+
+        // ⏱ Normalize to HH:mm format
+const [datePart, timePart] = deadlineInput.split(" ");
+let [hour, minute] = timePart.split(":");
+
+if (hour.length === 1) hour = "0" + hour;
+
+const normalizedDeadline = `${datePart} ${hour}:${minute}`;
 
     // Proceed to update the deadline
     const { data: groupedData, error: fetchError } = await supabase
@@ -380,7 +394,7 @@ async function handleUserInput(userMessage, From) {
 
     const updatedTasks = matchedRow.tasks.map((task) =>
       task.taskId === taskId
-        ? { ...task, due_date: deadlineInput, task_done: "Pending" }
+        ? { ...task, due_date: normalizedDeadline, task_done: "Pending" }
         : task
     );
 
@@ -401,7 +415,7 @@ async function handleUserInput(userMessage, From) {
     // ✅ Success
     await sendMessage(
       From,
-      `✅ Deadline for the task has been updated to *${deadlineInput}*`
+      `✅ Deadline for the task has been updated to *${normalizedDeadline}*`
     );
 
     // Optionally notify the assignee as well here
@@ -435,7 +449,7 @@ async function handleUserInput(userMessage, From) {
 
     const newTemplateMsg = {
       1: updatedTask.task_details,
-      2: deadlineInput,
+      2: normalizedDeadline,
     };
 
     newtaskList.forEach((task, index) => {
@@ -591,7 +605,7 @@ async function handleUserInput(userMessage, From) {
         reminder_type: updatedTask.reminder_type || "recurring", // Default to recurring if not specified
         reminder_frequency: updatedTask.reminder_frequency || null,
         taskId: taskId,
-        dueDateTime: deadlineInput, // Updated due date and time
+        dueDateTime: normalizedDeadline, // Updated due date and time
         reminderDateTime: updatedTask.reminderDateTime || null, // Use existing reminderDateTime for one-time reminders
       };
 
@@ -663,7 +677,7 @@ EXAMPLES:
 - For inputs like "tell Astik to test twilio", interpret assignee as "Astik" and task as "Test Twilio".
 
 For Reminders:
-- For one-time reminders, set reminder_type to "one-time", reminder_frequency to null, and reminderDateTime to the user-specified reminder date and time in "YYYY-MM-DD HH:mm" format.
+- For one-time reminders, set reminder_type to "one-time", reminder_frequency to null, and reminderDateTime to the user-specified reminder date and time in "DD-MM-YYYY HH:mm" format.
 - For recurring reminders, set reminderDateTime to null.
 - Do **not** assume the reminder time is tied to the due date for one-time reminders; it should be based on user input (e.g., "20th May at 5PM").
 
@@ -672,16 +686,16 @@ After having all the details you can send the summary of the response so that us
 For due dates:
 - If the user provides a day and month (e.g., "28th Feb" or "28 February"), convert it into the current year (e.g., "2025-02-28").
 - If the user provides a full date (e.g., "28th Feb 2025"), return it as is.
-- If no year is provided, assume the current year which is 2025 and return the date in the format YYYY-MM-DD.
+- If no year is provided, assume the current year which is 2025 and return the date in the format DD-MM-YYYY.
 
 
 For dynamic date terms:
 - Today's date is ${todayDate}
-- If the user says "today," convert that into **the current date** (e.g., if today is April 5, 2025, it should return "2025-04-05").
-- If the user says "tomorrow," convert that into **the next day’s date** (e.g., if today is April 5, 2025, "tomorrow" should be "2025-04-06").
+- If the user says "today," convert that into **the current date** (e.g., if today is April 5, 2025, it should return "05-04-2025").
+- If the user says "tomorrow," convert that into **the next day’s date** (e.g., if today is April 5, 2025, "tomorrow" should be "06-04-2025").
 - If the user says "next week," calculate the date of the same day in the following week (e.g., if today is April 5, 2025, "next week" would be April 12, 2025).
-- If the user provides a phrase like "in X days," calculate the due date accordingly (e.g., "in 3 days" should become "2025-04-08").
-- If the user provides terms like "next month," calculate the due date for the same day of the next month (e.g., if today is April 5, 2025, "next month" should become "2025-05-05").
+- If the user provides a phrase like "in X days," calculate the due date accordingly (e.g., "in 3 days" should become "08-04-2025").
+- If the user provides terms like "next month," calculate the due date for the same day of the next month (e.g., if today is April 5, 2025, "next month" should become "05-05-2025").
 - If the user says a phrase like "tonight 8pm" or "tonight at 8pm", treat it as a combination of today's date (${todayDate}) and the time (e.g., "20:00"). Do not ask again for due date or due time.
 - If no specific time is provided with "tonight", prompt for a time.
 
@@ -710,11 +724,11 @@ IMPORTANT:
 {
 "task": "<task_name>",
 "assignee": "<assignee_name>",
-"dueDate": "<YYYY-MM-DD>",
+"dueDate": "<DD-MM-YYYY>",
 "dueTime": "<HH:mm>",
 "reminder_type": "<recurring|one-time>",
 "reminder_frequency": "<reminder_frequency or null for one-time>",
-"reminderDateTime": "<YYYY-MM-DD HH:mm or null for recurring>"
+"reminderDateTime": "<DD-MM-YYYY HH:mm or null for recurring>"
 }
 `;
     console.log("we are here===> 3");
@@ -1617,11 +1631,11 @@ async function makeTwilioRequest() {
           allMatchedRow
         );
 
-        sendMessage(
+       sendMessage(
           From,
           `📅 Please provide the revised due date and time for this task.  
-🕒 *Format:* YYYY-MM-DD HH:MM  
-🧪 *Example:* 2025-07-23 14:47
+🕒 *Format:* DD-MM-YYYY HH:MM  
+🧪 *Example:* 30-07-2025 14:47
 `
         );
 
@@ -3372,7 +3386,7 @@ app.post("/update-reminder", async (req, res) => {
     const currentTime = moment().tz("Asia/Kolkata");
     console.log(
       `Sending reminder for task ${taskId} at ${currentTime.format(
-        "YYYY-MM-DD HH:mm:ss"
+        "DD-MM-YYYY HH:mm:ss"
       )} IST`
     );
     console.log(`Checking reminder for task ${taskId}...`);
@@ -3505,7 +3519,7 @@ app.post("/update-reminder", async (req, res) => {
     const now = moment().tz("Asia/Kolkata");
     const reminderTime = moment.tz(
       reminderDateTime,
-      "YYYY-MM-DD HH:mm",
+      "DD-MM-YYYY HH:mm",
       "Asia/Kolkata"
     );
     // const reminderTimeWithOffset = reminderTime.clone().subtract(20, "minutes");
@@ -3514,14 +3528,14 @@ app.post("/update-reminder", async (req, res) => {
     await supabase.from("reminders").upsert({
       taskId,
       reminder_frequency: "once",
-      nextReminderTime: reminderTime.format("YYYY-MM-DD HH:mm:ss"),
+      nextReminderTime: reminderTime.format("DD-MM-YYYY HH:mm:ss"),
     });
 
     console.log(
       "taskId, reminder_frequency, nextReminderTime",
       taskId,
       reminder_frequency,
-      reminderTime.format("YYYY-MM-DD HH:mm:ss")
+      reminderTime.format("DD-MM-YYYY HH:mm:ss")
     );
 
     if (delay <= 0) {
@@ -3589,10 +3603,10 @@ app.post("/update-reminder", async (req, res) => {
     const firstReminderTime = now.clone().add(quantity, unit);
     const delay = firstReminderTime.diff(now);
 
-    console.log(`Now: ${now.format("YYYY-MM-DD HH:mm:ss")} IST`);
+    console.log(`Now: ${now.format("DD-MM-YYYY HH:mm:ss")} IST`);
     console.log(
       `First reminder time: ${firstReminderTime.format(
-        "YYYY-MM-DD HH:mm:ss"
+        "DD-MM-YYYY HH:mm:ss"
       )} IST`
     );
     console.log(`Delay: ${delay} ms`);
@@ -3615,14 +3629,14 @@ app.post("/update-reminder", async (req, res) => {
           .add(quantity, "minutes");
         console.log(
           `Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
-            "YYYY-MM-DD HH:mm:ss"
+            "DD-MM-YYYY HH:mm:ss"
           )} IST`
         );
         // Persist next reminder time
         await supabase.from("reminders").upsert({
           taskId,
           reminder_frequency,
-          nextReminderTime: nextReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+          nextReminderTime: nextReminderTime.format("DD-MM-YYYY HH:mm:ss"),
         });
         const nextDelay = nextReminderTime.diff(moment().tz("Asia/Kolkata"));
         const timeoutId = setTimeout(scheduleReminder, nextDelay);
@@ -3643,19 +3657,19 @@ app.post("/update-reminder", async (req, res) => {
       });
       console.log(
         `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
-          "YYYY-MM-DD HH:mm:ss"
+          "DD-MM-YYYY HH:mm:ss"
         )} IST with frequency ${reminder_frequency}`
       );
       // Persist initial reminder
       await supabase.from("reminders").upsert({
         taskId,
         reminder_frequency,
-        nextReminderTime: firstReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+        nextReminderTime: firstReminderTime.format("DD-MM-YYYY HH:mm:ss"),
       });
 
       const dueTime = moment.tz(
         dueDateTime,
-        "YYYY-MM-DD HH:mm",
+        "DD-MM-YYYY HH:mm",
         "Asia/Kolkata"
       );
       const twoHoursBeforeDue = dueTime.clone().subtract(15, "minutes");
@@ -3733,7 +3747,7 @@ app.post("/update-reminder", async (req, res) => {
 
         console.log(
           `Scheduled 15-minute-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
-            "YYYY-MM-DD HH:mm:ss"
+            "DD-MM-YYYY HH:mm:ss"
           )} IST`
         );
       } else {
@@ -3755,13 +3769,13 @@ app.post("/update-reminder", async (req, res) => {
           .add(quantity, "hours");
         console.log(
           `Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
-            "YYYY-MM-DD HH:mm:ss"
+            "DD-MM-YYYY HH:mm:ss"
           )} IST`
         );
         await supabase.from("reminders").upsert({
           taskId,
           reminder_frequency,
-          nextReminderTime: nextReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+          nextReminderTime: nextReminderTime.format("DD-MM-YYYY HH:mm:ss"),
         });
         const nextDelay = nextReminderTime.diff(moment().tz("Asia/Kolkata"));
         const timeoutId = setTimeout(scheduleReminder, nextDelay);
@@ -3783,18 +3797,18 @@ app.post("/update-reminder", async (req, res) => {
       });
       console.log(
         `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
-          "YYYY-MM-DD HH:mm:ss"
+          "DD-MM-YYYY HH:mm:ss"
         )} IST with frequency ${reminder_frequency}`
       );
       await supabase.from("reminders").upsert({
         taskId,
         reminder_frequency,
-        nextReminderTime: firstReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+        nextReminderTime: firstReminderTime.format("DD-MM-YYYY HH:mm:ss"),
       });
 
       const dueTime = moment.tz(
         dueDateTime,
-        "YYYY-MM-DD HH:mm",
+        "DD-MM-YYYY HH:mm",
         "Asia/Kolkata"
       );
       const twoHoursBeforeDue = dueTime.clone().subtract(15, "minutes");
@@ -3872,7 +3886,7 @@ app.post("/update-reminder", async (req, res) => {
 
         console.log(
           `Scheduled 15-minute-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
-            "YYYY-MM-DD HH:mm:ss"
+            "DD-MM-YYYY HH:mm:ss"
           )} IST`
         );
       } else {
@@ -3898,13 +3912,13 @@ app.post("/update-reminder", async (req, res) => {
           });
         console.log(
           `Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
-            "YYYY-MM-DD HH:mm:ss"
+            "DD-MM-YYYY HH:mm:ss"
           )} IST`
         );
         await supabase.from("reminders").upsert({
           taskId,
           reminder_frequency,
-          nextReminderTime: nextReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+          nextReminderTime: nextReminderTime.format("DD-MM-YYYY HH:mm:ss"),
         });
         const nextDelay = nextReminderTime.diff(moment().tz("Asia/Kolkata"));
         const timeoutId = setTimeout(scheduleReminder, nextDelay);
@@ -3926,18 +3940,18 @@ app.post("/update-reminder", async (req, res) => {
       });
       console.log(
         `Scheduled first reminder for task ${taskId} at ${firstReminderTime.format(
-          "YYYY-MM-DD HH:mm:ss"
+          "DD-MM-YYYY HH:mm:ss"
         )} IST with frequency ${reminder_frequency}`
       );
       await supabase.from("reminders").upsert({
         taskId,
         reminder_frequency,
-        nextReminderTime: firstReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+        nextReminderTime: firstReminderTime.format("DD-MM-YYYY HH:mm:ss"),
       });
 
       const dueTime = moment.tz(
         dueDateTime,
-        "YYYY-MM-DD HH:mm",
+        "DD-MM-YYYY HH:mm",
         "Asia/Kolkata"
       );
       const twoHoursBeforeDue = dueTime.clone().subtract(15, "minutes");
@@ -4015,7 +4029,7 @@ app.post("/update-reminder", async (req, res) => {
 
         console.log(
           `Scheduled 15-minute-before-due reminder for task ${taskId} at ${twoHoursBeforeDue.format(
-            "YYYY-MM-DD HH:mm:ss"
+            "DD-MM-YYYY HH:mm:ss"
           )} IST`
         );
       } else {
@@ -4038,5 +4052,5 @@ app.post("/update-reminder", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
-  initializeReminders();
+  // initializeReminders();
 });
