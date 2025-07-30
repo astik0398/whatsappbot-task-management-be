@@ -3040,7 +3040,7 @@ async function initializeReminders() {
         const currentTime = moment().tz("Asia/Kolkata");
         console.log(
           `🚫Sending reminder for task ${taskId} at ${currentTime.format(
-            "YYYY-MM-DD HH:mm:ss"
+            "DD-MM-YYYY HH:mm:ss"
           )} IST`
         );
 
@@ -3061,7 +3061,7 @@ async function initializeReminders() {
         if (reminder_type === "recurring") {
           const dueTime = moment.tz(
             matchedTask.due_date,
-            "YYYY-MM-DD HH:mm",
+            "DD-MM-YYYY HH:mm",
             "Asia/Kolkata"
           );
           const timeToDue = dueTime.diff(currentTime, "minutes");
@@ -3124,7 +3124,7 @@ async function initializeReminders() {
         const now = moment().tz("Asia/Kolkata");
         const reminderTime = moment.tz(
           reminderDateTime,
-          "YYYY-MM-DD HH:mm",
+          "DD-MM-YYYY HH:mm",
           "Asia/Kolkata"
         );
         const delay = reminderTime.diff(now);
@@ -3144,7 +3144,7 @@ async function initializeReminders() {
         cronJobs.set(taskId, { type: "one-time", timeoutId });
         console.log(
           `🚫Scheduled one-time reminder for task ${taskId} at ${reminderTime.format(
-            "YYYY-MM-DD HH:mm:ss"
+            "DD-MM-YYYY HH:mm:ss"
           )} IST`
         );
       } else {
@@ -3184,7 +3184,7 @@ async function initializeReminders() {
         const now = moment().tz("Asia/Kolkata");
         const nextReminder = moment.tz(
           nextReminderTime,
-          "YYYY-MM-DD HH:mm:ss",
+          "DD-MM-YYYY HH:mm:ss",
           "Asia/Kolkata"
         );
         const delay = nextReminder.diff(now);
@@ -3200,7 +3200,7 @@ async function initializeReminders() {
         // NEW: Schedule special 15-minute-before-due reminder for recurring tasks
         const dueTime = moment.tz(
           matchedTask.due_date,
-          "YYYY-MM-DD HH:mm",
+          "DD-MM-YYYY HH:mm",
           "Asia/Kolkata"
         );
         const fifteenMinutesBeforeDue = dueTime.clone().subtract(15, "minutes");
@@ -3276,7 +3276,7 @@ async function initializeReminders() {
 
           console.log(
             ` 🚫Scheduled 15-minute-before-due reminder for task ${taskId} at ${fifteenMinutesBeforeDue.format(
-              "YYYY-MM-DD HH:mm:ss"
+              "DD-MM-YYYY HH:mm:ss"
             )} IST`
           );
         } else {
@@ -3293,13 +3293,13 @@ async function initializeReminders() {
               .add(quantity, unit);
             console.log(
               `🚫Scheduling next reminder for task ${taskId} at ${nextReminderTime.format(
-                "YYYY-MM-DD HH:mm:ss"
+                "DD-MM-YYYY HH:mm:ss"
               )} IST`
             );
             await supabase.from("reminders").upsert({
               taskId,
               reminder_frequency,
-              nextReminderTime: nextReminderTime.format("YYYY-MM-DD HH:mm:ss"),
+              nextReminderTime: nextReminderTime.format("DD-MM-YYYY HH:mm:ss"),
             });
             const nextDelay = nextReminderTime.diff(
               moment().tz("Asia/Kolkata")
@@ -3323,7 +3323,7 @@ async function initializeReminders() {
           });
           console.log(
             `🚫Scheduled recurring reminder for task ${taskId} at ${nextReminder.format(
-              "YYYY-MM-DD HH:mm:ss"
+              "DD-MM-YYYY HH:mm:ss"
             )} IST with frequency ${reminder_frequency}`
           );
         } else if (unit === "days") {
@@ -3343,7 +3343,7 @@ async function initializeReminders() {
             });
             console.log(
               `🚫Scheduled recurring reminders for task ${taskId} with cron ${cronExpression} starting at ${nextReminder.format(
-                "YYYY-MM-DD HH:mm:ss"
+                "DD-MM-YYYY HH:mm:ss"
               )} IST`
             );
           }, delay);
@@ -4052,5 +4052,5 @@ app.post("/update-reminder", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
-  // initializeReminders();
+  initializeReminders();
 });
