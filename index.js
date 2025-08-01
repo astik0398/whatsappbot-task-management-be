@@ -55,6 +55,13 @@ let currentTime = "";
 
 const sessions = {};
 
+function truncateString(str) {
+  if (typeof str !== 'string') {
+    return str;
+  }
+  return str.length > 65 ? str.slice(0, 65) + '...' : str;
+}
+
 function formatDueDate(dueDateTime) {
 
     console.log('dueDateTime--->>',dueDateTime);
@@ -458,7 +465,7 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
       newTemplateMsg[`${index + 4}`] = `${formatDueDate(
         task.due_date
       )}`;
-      newTemplateMsg[`${index + 4}_description`] = `${task.task_details}`;
+      newTemplateMsg[`${index + 4}_description`] = `${truncateString(task.task_details)}`;
       newTemplateMsg[`task_${index}`] = task.taskId;
     });
 
@@ -670,11 +677,12 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
 - If the user provides a day and month (e.g., "28th Feb" or "28 February"), assume the current year (2025) and format as "DD-MM-YYYY" (e.g., "28-02-2025").
 - If the user provides a full date (e.g., "28th Feb 2025"), return it as is in "DD-MM-YYYY" format.
 - For dynamic terms:
-  - "today": Use the current date (${todayDate}, e.g., "30-07-2025").
-  - "tomorrow": Use the next day’s date (e.g., "31-07-2025").
-  - "next week": Use the same day in the following week (e.g., if today is 30-07-2025, use "06-08-2025").
+  - Current date is ${todayDate}
+  - "today": Use the current date which is ${todayDate} (e.g., if today is April 5, 2025, it should return "05-04-2025").
+  - "tomorrow": Use the next day’s date (e.g., "31-07-2025") (e.g., if today is April 5, 2025, "tomorrow" should be "06-04-2025").
+  - "next week": Use the same day in the following week (e.g., if today is April 5, 2025, "next week" would be April 12, 2025).
   - "in X days": Calculate the date accordingly (e.g., "in 3 days" from 30-07-2025 is "02-08-2025").
-  - "next month": Use the same day in the next month (e.g., "30-08-2025").
+  - "next month": Use the same day in the next month (e.g., if today is April 5, 2025, "next month" should become "05-05-2025").
   - "tonight Xpm" or "tonight at Xpm": Treat as today's date (${todayDate}) and the specified time (e.g., "tonight at 8pm" is "30-07-2025 20:00").
   - If "tonight" is provided without a time, prompt for the time.
 
@@ -695,8 +703,10 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
   - Set 'reminder_type' to "one-time".
   - Set 'reminder_frequency' to null.
   - Set 'reminderDateTime' to the user-specified date and time in "DD-MM-YYYY HH:mm" format.
+  - If the reminder date or time is missing (e.g., user only says "one-time" or provides an incomplete date/time), prompt: "Please specify the date and time for the one-time reminder, e.g., '20th May at 5PM'."
+  - Do not proceed with task assignment if the reminder date and time are not fully specified for one-time reminders.
   - If the reminder date/time is missing, prompt for it.
-- Do not assume reminder time is tied to the due date for one-time reminders.
+- Do not assume the reminder time is tied to the due date for one-time reminders unless explicitly stated by the user.
 
 **Conversation History**:
 - Conversation history: ${JSON.stringify(conversationHistory)}
@@ -882,7 +892,7 @@ Thank you for providing the task details! Here's a quick summary:
                   )}`;
                   templateData[
                     `${index + 4}_description`
-                  ] = `${task.task_details}`;
+                  ] = `${truncateString(task.task_details)}`;
                   templateData[`task_${index}`] = task.taskId;
                 });
                 console.log(
@@ -1237,7 +1247,7 @@ async function extractTextFromImage(
               image_url: imageUrl,
             },
           },
-          version: "^2.8",
+          version: "^2.11",
         },
         {
           headers: {
@@ -1493,7 +1503,7 @@ async function makeTwilioRequest() {
         )}`;
         showTaskTemplateData[
           `${index + 4}_description`
-        ] = `${task.task_details}`;
+        ] = `${truncateString(task.task_details)}`;
         showTaskTemplateData[`task_${index}`] = task.taskId;
       });
 
@@ -1719,7 +1729,7 @@ async function makeTwilioRequest() {
           )}`;
           completed_templateData[
             `${index + 4}_description`
-          ] = `${task.task_details}`;
+          ] = `${truncateString(task.task_details)}`;
           completed_templateData[`task_${index}`] = task.taskId;
         });
 
@@ -1926,7 +1936,7 @@ async function makeTwilioRequest() {
           )}`;
           completed_templateData[
             `${index + 4}_description`
-          ] = `${task.task_details}`;
+          ] = `${truncateString(task.task_details)}`;
           completed_templateData[`task_${index}`] = task.taskId;
         });
 
@@ -2121,7 +2131,7 @@ async function makeTwilioRequest() {
           )}`;
           delete_templateData[
             `${index + 4}_description`
-          ] = `${task.task_details}`;
+          ] = `${truncateString(task.task_details)}`;
           delete_templateData[`task_${index}`] = task.taskId;
         });
 
