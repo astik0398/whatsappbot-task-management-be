@@ -2801,7 +2801,7 @@ When all details are collected, return **ONLY** a JSON object with the following
         inputs: {
           your_text: userMessage,
         },
-        version: "^2.0",
+        version: "^2.2",
       };
 
       const response = await axios.post(
