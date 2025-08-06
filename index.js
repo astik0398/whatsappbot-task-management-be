@@ -743,6 +743,14 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
       session.conversationHistory = conversationHistory;
       console.log("we are here===> 5", botReply);
 
+            if(botReply.startsWith('```json')){
+            console.log('AGAIN FACING THE SAME ISSUE--------------------------->>>>>>>>>>>>>');
+            handleUserInput('Details are correct please assign the task', From)
+
+            console.log('AGAIN FACING THE SAME ISSUE--------------------------->>>>>>>>>>>>> but message sent');
+            return
+            }
+
       if (botReply[0] === "{") {
         const taskDetails = JSON.parse(botReply);
 
