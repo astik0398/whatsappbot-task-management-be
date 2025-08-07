@@ -836,10 +836,10 @@ Thank you for providing the task details! Here's a quick summary:
                 reminder: "true",
                 reminder_frequency: taskData.reminder_frequency,
                 reason: null,
-                started_at: session.started_at || getCurrentDate(),
+                started_at: session.fromImage ? session.started_at : getCurrentDate(),
                 reminder_type: taskData.reminder_type || "recurring", // Default to recurring if not specified
                 reminderDateTime: taskData.reminderDateTime || null, // Store reminder date and time
-                notes: session.notes || null, // Include notes from session
+                notes: session.fromImage ? session.notes : null, // Include notes from session
               };
 
               const { data: existingData, error: fetchError } = await supabase
