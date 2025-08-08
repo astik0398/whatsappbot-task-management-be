@@ -632,7 +632,7 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
       };
 
       // Call the /update-reminder endpoint
-      const response = await fetch("https://whatsappbot-task-management-be-production.up.railway.app/update-reminder", {
+      const response = await fetch("http://localhost:8000/update-reminder", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -692,9 +692,10 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
 - If the assignee is missing or ambiguous, prompt: "Please specify the assignee for the task."
 
 **Assignee Matching Rules**:
-- The assignee will always be one of the following names: ${allAssigneeNames.join(', ')}.
-- If the detected assignee name from the transcription is a variant, nickname, or has a spelling difference, map it to the closest match from the above list and assign the task directly.
-- Always choose the closest match, even if the input name is slightly misspelled or transliterated from Hindi.
+- The assignee must always be selected from the following "Assignee list" - ${allAssigneeNames.join(', ')}.
+- If the assignee name provided by the user is in Hindi, transliterated, misspelled, or has phonetic variations, match it to the **closest valid name** from the "Assignee list" based on meaning, pronunciation, or context.
+- Do not invent new names.
+- Always consider the exact spelling from the above "Assignee list".
 
 **Due Date Handling**:
 - If the user provides a day and month (e.g., "28th Feb" or "28 February"), assume the current year (2025) and format as "DD-MM-YYYY" (e.g., "28-02-2025").
@@ -755,10 +756,10 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
 }
 - Do not assign the task or return the JSON if any required detail is missing.`;
 
-    console.log("we are here===> 3");
+    console.log("we are here===> 3 AND WE ARE LOGGING THE PROMPT HERE:::::::::::::::::", prompt);
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4-turbo",
+        model: "gpt-4.1",
         messages: [{ role: "system", content: prompt }],
       });
       console.log("we are here===> 4");
@@ -1079,7 +1080,7 @@ Thank you for providing the task details! Here's a quick summary:
                 session.conversationHistory = [];
 
                 await fetch(
-                  "https://whatsappbot-task-management-be-production.up.railway.app/update-reminder",
+                  "http://localhost:8000/update-reminder",
                   {
                     method: "POST",
                     headers: {
@@ -4058,5 +4059,5 @@ app.post("/update-reminder", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
-  initializeReminders();
+  // initializeReminders();
 });
