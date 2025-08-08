@@ -15,6 +15,7 @@ const MessagingResponse = require("twilio").twiml.MessagingResponse;
 const chrono = require("chrono-node");
 const tinyurl = require("tinyurl");
 const path = require("path"); // NEW: Added path module import
+const { performance } = require('perf_hooks');
 
 const app = express();
 const port = process.env.PORT || 8000;
@@ -193,6 +194,20 @@ async function main() {
 }
 
 main();
+
+async function getAssigneeName(){
+  const {data, error} = await supabase.from('grouped_tasks').select("name", {distinct: true})
+
+    if (error) {
+    console.error("Error fetching names:", error);
+    return;
+  }
+
+  const uniqueNames = [...new Set(data.map(item => item.name))];
+
+  console.log('Unique assignee names:', uniqueNames);
+  return uniqueNames
+}
 
 app.get("/refresh", async (req, res) => {
   console.log("Refreshing tasks from Supabase...");
@@ -646,6 +661,9 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
 
     return;
   } else {
+
+    const allAssigneeNames = await getAssigneeName()
+
     const prompt = `You are a helpful task manager assistant. Respond with a formal tone and a step-by-step format. Your goal is to guide the user through task assignment by collecting all required details: task description, assignee, due date, due time, and reminder preference. Do not assign the task until all details are provided and unambiguous.
 
 **Task Assignment Rules**:
@@ -672,6 +690,11 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
 - The assignee must be a proper name (e.g., "Astik", "John Doe", "Anandini").
 - Do not assume non-name terms (e.g., "this", "assigning") as the assignee.
 - If the assignee is missing or ambiguous, prompt: "Please specify the assignee for the task."
+
+**Assignee Matching Rules**:
+- The assignee will always be one of the following names: ${allAssigneeNames.join(', ')}.
+- If the detected assignee name from the transcription is a variant, nickname, or has a spelling difference, map it to the closest match from the above list.
+- Always choose the closest match, even if the input name is slightly misspelled or transliterated from Hindi.
 
 **Due Date Handling**:
 - If the user provides a day and month (e.g., "28th Feb" or "28 February"), assume the current year (2025) and format as "DD-MM-YYYY" (e.g., "28-02-2025").
@@ -2797,49 +2820,20 @@ When all details are collected, return **ONLY** a JSON object with the following
     if (mediaUrl && mediaType && mediaType.startsWith("audio")) {
       console.log(`Received a voice message from`);
       console.log(`Media URL: ${mediaUrl}`);
+      const startTranscription = performance.now();
 
       const transcription = await transcribeAudioDirectly(mediaUrl);
+
+      const endTranscription = performance.now();
+      console.log(`⏱ Transcription time: ${(endTranscription - startTranscription).toFixed(2)} ms`);
 
       if (transcription) {
         userMessage = transcription;
       }
 
-      const apiKey = process.env.WORDWARE_API_KEY;
-      const requestBody = {
-        inputs: {
-          your_text: userMessage,
-        },
-        version: "^2.2",
-      };
+      const endOverall = performance.now();
+      console.log(`⏱ Total time: ${(endOverall - startTranscription).toFixed(2)} ms`);
 
-      const response = await axios.post(
-        "https://app.wordware.ai/api/released-app/8ab2f459-fee3-4aa1-9d8b-fc6454a347c3/run",
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      console.log("res====?>", response.data);
-
-      const responseValue = response.data.trim().split("\n");
-
-      let parsedChunks = responseValue.map((chunk) => JSON.parse(chunk));
-
-      console.log(
-        "parsedChunks length",
-        parsedChunks[parsedChunks.length - 1].value.values.new_generation
-      );
-
-      const cleanText =
-        parsedChunks[parsedChunks.length - 1].value.values.new_generation;
-
-      console.log("clean text====>", cleanText);
-
-      userMessage = cleanText;
     }
 
     // Respond with an HTTP 200 status
