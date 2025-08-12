@@ -205,7 +205,7 @@ async function getAssigneeName(){
 
   const uniqueNames = [...new Set(data.map(item => item.name))];
 
-  console.log('Unique assignee names:', uniqueNames);
+  // console.log('Unique assignee names:', uniqueNames);
   return uniqueNames
 }
 
@@ -463,11 +463,11 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
         task.task_done === "Pending" || task.task_done == "Not Completed"
     ); // Only show pending tasks
 
-    console.log(
-      "inside handleUserInput taskList lengthh---->>>>",
-      newtaskList,
-      newtaskList.length
-    );
+    // console.log(
+    //   "inside handleUserInput taskList lengthh---->>>>",
+    //   newtaskList,
+    //   newtaskList.length
+    // );
 
     const newTemplateMsg = {
       1: updatedTask.task_details,
@@ -475,7 +475,7 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
     };
 
     newtaskList.forEach((task, index) => {
-      console.log("inside for each =======>>>>>", task);
+      // console.log("inside for each =======>>>>>", task);
 
       newTemplateMsg[`${index + 4}`] = `${formatDueDate(
         task.due_date
@@ -756,7 +756,7 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
 }
 - Do not assign the task or return the JSON if any required detail is missing.`;
 
-    console.log("we are here===> 3 AND WE ARE LOGGING THE PROMPT HERE:::::::::::::::::", prompt);
+    // console.log("we are here===> 3 AND WE ARE LOGGING THE PROMPT HERE:::::::::::::::::", prompt);
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-4.1",
@@ -765,7 +765,7 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
       console.log("we are here===> 4");
       const botReply = response.choices[0].message.content;
       session.conversationHistory = conversationHistory;
-      console.log("we are here===> 5", botReply);
+      // console.log("we are here===> 5", botReply);
 
             if(botReply.includes('```json')){
             console.log('AGAIN FACING THE SAME ISSUE--------------------------->>>>>>>>>>>>>');
@@ -799,7 +799,7 @@ const normalizedDeadline = `${datePart} ${hour}:${minute}`;
 
         console.log("FROM NUMBER===>", From);
 
-        console.log("matchingAssignees====>", matchingAssignees);
+        // console.log("matchingAssignees====>", matchingAssignees);
 
         if (matchingAssignees.length > 1) {
           let message = `There are multiple people with the name "${assigneeName}". Please choose one:\n`;
@@ -841,7 +841,7 @@ Thank you for providing the task details! Here's a quick summary:
               person.name.toLowerCase() === taskData.assignee.toLowerCase() &&
               person.employerNumber === From
           );
-          console.log("assignedPerson--->", assignedPerson);
+          // console.log("assignedPerson--->", assignedPerson);
           console.log("taskData", taskData);
 
           if (assignedPerson) {
@@ -917,7 +917,7 @@ Thank you for providing the task details! Here's a quick summary:
                 };
 
                 taskList.forEach((task, index) => {
-                  console.log("inside for each =======>>>>>", task);
+                  // console.log("inside for each =======>>>>>", task);
 
                   templateData[`${index + 4}`] = `${formatDueDate(
                     task.due_date
@@ -927,11 +927,11 @@ Thank you for providing the task details! Here's a quick summary:
                   ] = `${truncateString(task.task_details)}`;
                   templateData[`task_${index}`] = task.taskId;
                 });
-                console.log(
-                  "inside handleUserInput taskList---->>>>",
-                  taskList
-                );
-                console.log("templateData:::::::::::::", templateData);
+                // console.log(
+                //   "inside handleUserInput taskList---->>>>",
+                //   taskList
+                // );
+                // console.log("templateData:::::::::::::", templateData);
 
                 try {
                   if (taskList.length === 1) {
@@ -1133,7 +1133,7 @@ async function sendMessage(
   console.log("Sending message to:", to);
   console.log("Message:", message);
 
-  console.log("isTemplate-->", isTemplate, "templateData-->", templateData);
+  // console.log("isTemplate-->", isTemplate, "templateData-->", templateData);
 
   try {
     const messageOptions = {
@@ -1263,96 +1263,83 @@ async function uploadToSupabase(filePath, fileName) {
   }
 }
 
-async function extractTextFromImage(
-  imageUrl,
-  maxRetries = 3,
-  retryDelay = 1000
-) {
-  console.log("inside extractTextFromImage func");
-  let attempts = 0;
+async function extractTextFromImage(filePath) {
+  console.log(
+    "inside extractTextFromImage (OpenAI Vision) - local file",
+    filePath
+  );
 
-  while (attempts < maxRetries) {
-    try {
-      const response = await axios.post(
-        "https://app.wordware.ai/api/released-app/dedd9680-4a3b-4eb2-a3bc-fface48c4322/run",
+  const startOCR = performance.now();
+
+  try {
+    const fileBuffer = fs.readFileSync(filePath, {
+      encoding: "base64",
+    });
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4.1-mini",
+      response_format: {type: "json_object"},
+      messages: [
         {
-          inputs: {
-            new_input_1: {
-              type: "image",
-              image_url: imageUrl,
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: 'Have a look at the image and extract only Order Date, delivery date, customer name (Arpit in this image), customer number, payment mode, order id and the name which is there at the extreme bottom right corner(Kishan in this image), the bakery location in short (like Sec-18 Udyog Vihar, Gurugram in this case, not full address) and extract the context from the image and convert it in the form of task for instance (Prepare the pineapple cake, something like that) and then finally return it in json format. Make sure to return only the JSON and nothing extra also for the task make sure to return a **single combined sentence** describing the overall order (e.g., the types of cake to prepare, flavors, shapes, sizes, and any message to be written on it (like Jay in this case), and make sure to use the key as, name which will be for customer_name, phone which will be for customer_number which is "919311022224" (make sure to add 91 before customer number), employerNumber which will be "whatsapp:+918013416XXX", userId which will be "c20d5529-7afc-400a-83fb-84989f5a03ee" and tasks which will be an array that will contain started_at which will be order_date, due_date which will be delivery_date, task_details which will be the task, and a notes object also, make sure to put the details like payment_mode, order_id, handled_by, bakery_location inside a notes object also for the delivery date and order date make sure to format it as DD-MM-YYY HH:M A',
             },
-          },
-          version: "^2.11",
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${fileBuffer}`,
+                detail: "low",
+              },
+            },
+          ],
         },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.WORDWARE_API_KEY_EXTRACT}`,
-          },
-        }
-      );
-      const newGen = await extractNewGeneration(response.data);
-      if (newGen) {
-        return newGen; // Success, return the extracted text
-      } else {
-        attempts++;
-        console.log(
-          `Attempt ${attempts} failed, extractedText is null. Retrying...`
-        );
-        if (attempts < maxRetries) {
-          await new Promise((resolve) => setTimeout(resolve, retryDelay)); // Wait before retrying
-        }
-      }
-    } catch (error) {
-      console.error(
-        `Error extracting text from image (Attempt ${attempts + 1}):`,
-        error.message
-      );
-      if (error.response) {
-        console.error(
-          "Wordware error details:",
-          JSON.stringify(error.response.data, null, 2)
-        );
-      }
-      attempts++;
-      if (attempts < maxRetries) {
-        console.log(`Retrying after error... Attempt ${attempts + 1}`);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay)); // Wait before retrying
-      }
-    }
-  }
+      ],
+    });
 
-  console.error(`Failed to extract text after ${maxRetries} attempts.`);
-  return null; // Return null if all retries fail
+    const extractedText = response.choices[0].message.content;
+
+    // console.log("response and extractedText", response, extractedText);
+
+    const endOCR = performance.now();
+    console.log(`⏱ OCR extraction took ${(endOCR - startOCR).toFixed(2)} ms`);
+
+    return extractedText;
+  } catch (error) {
+    console.error("Error in OpenAI Vision OCR:", error);
+    return null;
+  }
 }
 
-function extractNewGeneration(rawResponse) {
-  console.log("inside extracted new gen...");
-  const lines = rawResponse.trim().split("\n");
-  for (const line of lines) {
-    try {
-      const json = JSON.parse(line);
-      if (
-        json.type === "chunk" &&
-        json.value &&
-        json.value.output &&
-        json.value.output.new_generation
-      ) {
-        console.log(
-          "json.value.output.new_generation;",
-          json.value.output.new_generation
-        );
-        return json.value.output.new_generation;
-      }
-    } catch (err) {
-      continue;
-    }
-  }
-  return null;
-}
+// function extractNewGeneration(rawResponse) {
+//   console.log("inside extracted new gen...");
+//   const lines = rawResponse.trim().split("\n");
+//   for (const line of lines) {
+//     try {
+//       const json = JSON.parse(line);
+//       if (
+//         json.type === "chunk" &&
+//         json.value &&
+//         json.value.output &&
+//         json.value.output.new_generation
+//       ) {
+//         console.log(
+//           "json.value.output.new_generation;",
+//           json.value.output.new_generation
+//         );
+//         return json.value.output.new_generation;
+//       }
+//     } catch (err) {
+//       continue;
+//     }
+//   }
+//   return null;
+// }
 
 async function insertBakeryOrder(data, From) {
-  console.log("data inside supabase insert function---> 1", data);
+  // console.log("data inside supabase insert function---> 1", data);
   if (From === "whatsapp:+918013356481") {
     data.userId = "253d8af9-aa41-4249-8d8e-e85acd464650";
     data.employerNumber = "whatsapp:+918013356481";
@@ -1363,7 +1350,7 @@ async function insertBakeryOrder(data, From) {
     data.userId = "ec579488-8a1c-4a72-8e0d-8fc68c4622b6";
     data.employerNumber = "whatsapp:+917980018498";
   }
-  console.log("data inside supabase insert function---> 2", data);
+  // console.log("data inside supabase insert function---> 2", data);
 
   try {
     // Step 1: Check for existing record
@@ -1392,6 +1379,11 @@ async function insertBakeryOrder(data, From) {
   }
 }
 // TEXT EXTRACTION FROM THE IMAGE (BAKERY RECEIPT CODE) "ENDS HERE"
+const stepTimings = {};
+
+const markStep = (label) => {
+  stepTimings[label] = performance.now();
+};
 
 async function makeTwilioRequest() {
   app.post("/whatsapp", async (req, res) => {
@@ -1757,7 +1749,7 @@ async function makeTwilioRequest() {
         completed_templateData = {};
 
         updatedFilteredTasks.forEach((task, index) => {
-          console.log("inside for each =======>>>>>", task);
+          // console.log("inside for each =======>>>>>", task);
 
           completed_templateData[`${index + 4}`] = `${formatDueDate(
             task.due_date
@@ -1964,7 +1956,7 @@ async function makeTwilioRequest() {
         completed_templateData = {};
 
         updatedFilteredTasks.forEach((task, index) => {
-          console.log("inside for each =======>>>>>", task);
+          // console.log("inside for each =======>>>>>", task);
 
           completed_templateData[`${index + 4}`] = `${formatDueDate(
             task.due_date
@@ -2159,7 +2151,7 @@ async function makeTwilioRequest() {
         delete_templateData = {};
 
         filteredTasks.forEach((task, index) => {
-          console.log("inside for each =======>>>>>", task);
+          // console.log("inside for each =======>>>>>", task);
 
           delete_templateData[`${index + 4}`] = `${formatDueDate(
             task.due_date
@@ -2354,25 +2346,51 @@ async function makeTwilioRequest() {
       const startTime = Date.now();
 
       try {
+                markStep("overallStart");
+
         const fileName = `image_${Date.now()}.${mediaType.split("/")[1]}`;
         const filePath = path.join(__dirname, "Uploads", fileName);
 
         // Ensure uploads directory exists
         fs.mkdirSync(path.join(__dirname, "Uploads"), { recursive: true });
 
+                markStep("downloadStart");
+
         // Download the image from Twilio
         const downloadSuccess = await downloadImage(mediaUrl, filePath);
+           markStep("downloadEnd");
         console.log(
-          `Image download ${downloadSuccess ? "successful" : "failed"}`
+          `⏱ Download took ${(
+            stepTimings.downloadEnd - stepTimings.downloadStart
+          ).toFixed(2)} ms`
         );
 
         if (downloadSuccess) {
+
+                    markStep("uploadStart");
+
           // Upload to Supabase and get public URL
           const supabaseUrl = await uploadToSupabase(filePath, fileName);
+
+                 markStep("uploadEnd");
+          console.log(
+            `⏱ Upload took ${(
+              stepTimings.uploadEnd - stepTimings.uploadStart
+            ).toFixed(2)} ms`
+          );
+
           if (supabaseUrl) {
             console.log("inside supabaseURL condition--->");
-            const extractedText = await extractTextFromImage(supabaseUrl);
-            console.log("extractedText====>", extractedText);
+
+                        markStep("extractStart");
+
+            const extractedText = await extractTextFromImage(filePath);
+             markStep("extractEnd");
+            console.log(
+              `⏱ OCR extraction took ${(
+                stepTimings.extractEnd - stepTimings.extractStart
+              ).toFixed(2)} ms`
+            );
 
             if (extractedText) {
               console.log("inside extractedText condition--->");
@@ -2381,15 +2399,23 @@ async function makeTwilioRequest() {
                   .replace(/```json\s*/i, "")
                   .replace(/```$/, "")
                   .trim();
-                console.log("cleaned json", cleanJson);
+                // console.log("cleaned json", cleanJson);
                 const parsed = JSON.parse(cleanJson);
-                console.log("parsed====> ", parsed);
+                // console.log("parsed====> ", parsed);
+
+                                markStep("insertStart");
 
                 const success = await insertBakeryOrder(parsed, From);
 
                 console.log("success inside bakery receipt==>", success);
 
                 console.log("Order details extracted successfully:", success);
+                markStep("insertEnd");
+                console.log(
+                  `⏱ Insert step took ${(
+                    stepTimings.insertEnd - stepTimings.insertStart
+                  ).toFixed(2)} ms`
+                );
 
                 if (success) {
                   // Initialize session with extracted task details
@@ -2435,6 +2461,13 @@ async function makeTwilioRequest() {
                   res.status(200).send(twiml.toString());
                   console.log(
                     `Response sent successfully in ${Date.now() - startTime}ms`
+                  );
+
+                    markStep("overallEnd");
+                  console.log(
+                    `⏱ Total image processing time: ${(
+                      stepTimings.overallEnd - stepTimings.overallStart
+                    ).toFixed(2)} ms`
                   );
                   return;
                 } else {
@@ -3765,7 +3798,7 @@ app.post("/update-reminder", async (req, res) => {
 
       const existingJob = cronJobs.get(taskId);
 
-      console.log("existingJob===============>", existingJob);
+      // console.log("existingJob===============>", existingJob);
 
       return res.status(200).json({ message: "Recurring reminder scheduled" });
     } else if (unit === "hours") {
@@ -3904,7 +3937,7 @@ app.post("/update-reminder", async (req, res) => {
 
       const existingJob = cronJobs.get(taskId);
 
-      console.log("existingJob===============>", existingJob);
+      // console.log("existingJob===============>", existingJob);
       return res.status(200).json({ message: "Recurring reminder scheduled" });
     } else if (unit === "days") {
       const scheduleReminder = async () => {
@@ -4047,7 +4080,7 @@ app.post("/update-reminder", async (req, res) => {
 
       const existingJob = cronJobs.get(taskId);
 
-      console.log("existingJob===============>", existingJob);
+      // console.log("existingJob===============>", existingJob);
       return res.status(200).json({ message: "Recurring reminder scheduled" });
     } else {
       console.log("Unsupported frequency unit:", unit);
