@@ -2830,6 +2830,33 @@ When all details are collected, return **ONLY** a JSON object with the following
         return res.type("text/xml").send(twiml.toString());
       }
 
+      const meetingDetails = {
+        user_number: From,
+        meeting_title : title,
+        meeting_date: startDateTime.format('YYYY-MM-DD'),
+        meeting_time: startDateTime.format('h:mm A'),
+        meeting_link: calendarResponse.data.hangoutLink,
+        meeting_duration: durationMinutes,
+        meeting_attendees: attendees,
+        meeting_type: meetingType
+      }
+
+            console.log("📝 Meeting details to insert -- From:", meetingDetails);
+
+             try {
+        const { data, error } = await supabase
+          .from("allMeetings")
+          .insert([meetingDetails]);
+
+        if (error) {
+          console.error("❌ Supabase insert error:", error);
+        } else {
+          console.log("✅ Meeting inserted into Supabase:", data);
+        }
+      } catch (err) {
+        console.error("❌ Unexpected Supabase error:", err);
+      }
+
       const twiml = new MessagingResponse();
 
       let message = `✅ Meeting successfully created! 🎉\n📝 *Title:* ${title}\n📅 *Date:* ${startDateTime.format(
