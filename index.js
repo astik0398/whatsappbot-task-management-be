@@ -4149,44 +4149,35 @@ async function getAllEmployerPhones() {
   return Object.values(employerMap);
 }
 
-cron.schedule("0 9 * * *", async () => {
+cron.schedule("*/10 * * * *", async () => {
   console.log("⏰ Running scheduled job...");
 
   try {
     const employerList = await getAllEmployerPhones();
 
-    employerList.forEach(async (employer) => {
-      // ✅ Only send if phone matches your test number
+    for (const employer of employerList) {
+  const pendingTasks = employer.tasks;
+  let taskList = "";
 
-      const pendingTasks = employer.tasks;
-      let taskList = "";
-      let message;
+  if (pendingTasks.length > 0) {
+    taskList = pendingTasks
+      .map((task, index) => `${index + 1}. ${task.task_details || "Untitled Task"}`)
+      .join("\n");
+  }
 
-      if (pendingTasks.length > 0) {
-        taskList = pendingTasks
-          .map((task, index) => `${index + 1}. ${task.task_details || "Untitled Task"}`)
-          .join("\n");
-
-        message = `You have ${pendingTasks.length} pending task(s):\n\n${taskList}`;
-      } else {
-        message = "There are no tasks for you.";
-      }
-
-      console.log(`📩 Sending to: ${employer.phone} ->\n${message}\n`);
-
-      console.log('taskList====', taskList);
-      
-      await sendMessage(
-        `whatsapp:+${employer.phone}`,
-        null,
-        true,
-        {
-          1: String(pendingTasks.length),
-    2: taskList || "No tasks pending ✅",
-        },
-        "HXd3fd41493f0d5aa70f77256e0510efef"
-      );
-    });
+  console.log(`📩 Sending to: ${employer.phone}`);
+  
+  await sendMessage(
+    `whatsapp:+${employer.phone}`,
+    null,
+    true,
+    {
+      1: String(pendingTasks.length),
+      2: taskList || "No tasks pending ✅",
+    },
+    "HXd3fd41493f0d5aa70f77256e0510efef"
+  );
+}
   } catch (err) {
     console.error("❌ Error fetching employer list:", err.message);
   }
