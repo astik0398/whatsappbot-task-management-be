@@ -4185,8 +4185,24 @@ cron.schedule("*/10 * * * *", async () => {
   timezone: "Asia/Kolkata",
 });
 
+app.get("/show-task-summary", async (req, res) => {
+  try {
+    const employerList = await getAllEmployerPhones();
+    res.json({
+      success: true,
+      data: employerList,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching employer list:", err.message);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
-  initializeReminders();
+  // initializeReminders();
 });
