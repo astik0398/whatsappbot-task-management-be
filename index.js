@@ -4149,13 +4149,18 @@ async function getAllEmployerPhones() {
   return Object.values(employerMap);
 }
 
-cron.schedule("0 9 * * *", async () => {
+cron.schedule("*/10 * * * *", async () => {
   console.log("⏰ Running scheduled job...");
 
   try {
     const employerList = await getAllEmployerPhones();
 
     for (const employer of employerList) {
+
+              if (employer.phone !== "918013356481" || employer.phone !== "917980018498") {
+    continue; // skip this iteration
+  }
+
   const pendingTasks = employer.tasks;
   let taskList = "";
 
@@ -4175,7 +4180,7 @@ cron.schedule("0 9 * * *", async () => {
       1: String(pendingTasks.length),
       2: taskList || "No tasks pending ✅",
     },
-    "HXd3fd41493f0d5aa70f77256e0510efef"
+    "HX4c4fa7d1aaf1cda0257f68b16efc20ce"
   );
 }
   } catch (err) {
@@ -4204,5 +4209,5 @@ app.get("/show-task-summary", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
-  initializeReminders();
+  // initializeReminders();
 });
