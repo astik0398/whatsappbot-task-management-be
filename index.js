@@ -4116,6 +4116,84 @@ app.post("/update-reminder", async (req, res) => {
   }
 });
 
+async function getAllEmployerPhones() {
+  const { data, error } = await supabase
+    .from("grouped_tasks")
+    .select("phone, tasks"); // fetch phone + tasks
+
+  if (error) throw error;
+
+  const employerMap = {};
+
+  (data || []).forEach(row => {
+    if (!row.phone) return; // skip null/undefined phones
+
+    if (!employerMap[row.phone]) {
+      // if phone not seen yet, initialize with empty tasks
+      employerMap[row.phone] = {
+        phone: row.phone,
+        tasks: []
+      };
+    }
+
+    // merge only tasks with task_done === "Pending"
+    if (Array.isArray(row.tasks)) {
+      const pendingTasks = row.tasks.filter(
+        task => task.task_done === "Pending"
+      );
+      employerMap[row.phone].tasks.push(...pendingTasks);
+    }
+  });
+
+  // return as an array
+  return Object.values(employerMap);
+}
+
+cron.schedule("*/10 * * * *", async () => {
+  console.log("⏰ Running scheduled job...");
+
+  try {
+    const employerList = await getAllEmployerPhones();
+
+    employerList.forEach(async (employer) => {
+      // ✅ Only send if phone matches your test number
+
+      const pendingTasks = employer.tasks;
+      let taskList = "";
+      let message;
+
+      if (pendingTasks.length > 0) {
+        taskList = pendingTasks
+          .map((task, index) => `${index + 1}. ${task.task_details || "Untitled Task"}`)
+          .join("\n");
+
+        message = `You have ${pendingTasks.length} pending task(s):\n\n${taskList}`;
+      } else {
+        message = "There are no tasks for you.";
+      }
+
+      console.log(`📩 Sending to: ${employer.phone} ->\n${message}\n`);
+
+      console.log('taskList====', taskList);
+      
+      await sendMessage(
+        `whatsapp:+${employer.phone}`,
+        null,
+        true,
+        {
+          1: String(pendingTasks.length),
+    2: taskList || "No tasks pending ✅",
+        },
+        "HXd3fd41493f0d5aa70f77256e0510efef"
+      );
+    });
+  } catch (err) {
+    console.error("❌ Error fetching employer list:", err.message);
+  }
+}, {
+  timezone: "Asia/Kolkata",
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   makeTwilioRequest();
