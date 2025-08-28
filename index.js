@@ -4149,46 +4149,53 @@ async function getAllEmployerPhones() {
   return Object.values(employerMap);
 }
 
-// cron.schedule("*/5 * * * *", async () => {
-//   console.log("⏰ Running scheduled job...");
+cron.schedule(
+  "0 */3 * * *",
+  async () => {
+    console.log("⏰ Running scheduled job...");
 
-//   try {
-//     const employerList = await getAllEmployerPhones();
+    try {
+      const employerList = await getAllEmployerPhones();
 
-//     for (const employer of employerList) {
+      for (const employer of employerList) {
+        if (
+          employer.phone !== "918013356481" &&
+          employer.phone !== "917980018498" &&
+          employer.phone !== "14155839275"
+        ) {
+          continue;
+        }
 
-//              if (employer.phone !== "918013356481" && employer.phone !== "917980018498") {
-//   continue;
-// }
+        const pendingTasks = employer.tasks;
+        let taskList = "";
 
-//   const pendingTasks = employer.tasks;
-//   let taskList = "";
+        if (pendingTasks.length > 0) {
+          taskList = pendingTasks
+            .map(
+              (task, index) =>
+                `${index + 1}. ${task.task_details || "Untitled Task"}`
+            )
+            .join("\n");
+        }
 
-//   if (pendingTasks.length > 0) {
-//     taskList = pendingTasks
-//       .map((task, index) => `${index + 1}. ${task.task_details || "Untitled Task"}`)
-//       .join("\n");
-//   }
+        console.log(`📩 Sending to: ${employer.phone}`);
 
-//   console.log(`📩 Sending to: ${employer.phone}`);
-  
-//   await sendMessage(
-//     `whatsapp:+${employer.phone}`,
-//     null,
-//     true,
-//     {
-//       1: String(pendingTasks.length),
-//       2: taskList || "No tasks pending ✅",
-//     },
-//     "HXffcc8f39f93bf53dfc6391bd22333cc2"
-//   );
-// }
-//   } catch (err) {
-//     console.error("❌ Error fetching employer list:", err.message);
-//   }
-// }, {
-//   timezone: "Asia/Kolkata",
-// });
+        await client.messages.create({
+          from: "whatsapp:+14155238886", // your Twilio WhatsApp sender number
+          to: `whatsapp:+${employer.phone}`,
+          body: `Hey, you have ${pendingTasks.length} pending tasks today:\n${
+            taskList || "No tasks pending ✅"
+          }`,
+        });
+      }
+    } catch (err) {
+      console.error("❌ Error fetching employer list:", err.message);
+    }
+  },
+  {
+    timezone: "Asia/Kolkata",
+  }
+);
 
 app.get("/show-task-summary", async (req, res) => {
   try {
