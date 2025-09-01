@@ -4149,13 +4149,8 @@ async function getAllEmployerPhones() {
   return Object.values(employerMap);
 }
 
-const FLEXIBLE_TEMPLATE_SID = "HX1ed3bebefa158609f8b89ae44b5bd16b"; // your approved template
-
-// Max characters per template variable (WhatsApp limit is ~1024 per body)
-const MAX_TEMPLATE_LENGTH = 1000;
-
 cron.schedule(
-  "*/5 * * * *",
+  "0 */3 * * *",
   async () => {
     console.log("⏰ Running scheduled job...");
 
@@ -4171,52 +4166,27 @@ cron.schedule(
           continue;
         }
 
-        const pendingTasks = employer.tasks || [];
-        const taskCount = pendingTasks.length;
+        const pendingTasks = employer.tasks;
+        let taskList = "";
 
-        if (taskCount === 0) {
-          console.log(`🚫 No tasks for ${employer.phone}, skipping`);
-          continue;
+        if (pendingTasks.length > 0) {
+          taskList = pendingTasks
+            .map(
+              (task, index) =>
+                `${index + 1}. ${task.task_details || "Untitled Task"}`
+            )
+            .join("\n");
         }
 
-        // Build all task lines first
-        const taskLines = pendingTasks.map(
-          (task, index) => `📌 ${index + 1}. ${task.task_details || "Untitled Task"}`
-        );
+        console.log(`📩 Sending to: ${employer.phone}`);
 
-        // Split task lines into chunks to avoid exceeding template length
-        let chunks = [];
-        let currentChunk = [];
-
-        let currentLength = 0;
-        for (const line of taskLines) {
-          if (currentLength + line.length + 1 > MAX_TEMPLATE_LENGTH) {
-            chunks.push(currentChunk.join("\n"));
-            currentChunk = [];
-            currentLength = 0;
-          }
-          currentChunk.push(line);
-          currentLength += line.length + 1; // +1 for newline
-        }
-        if (currentChunk.length) chunks.push(currentChunk.join("\n"));
-
-        // Send each chunk as a template message
-        for (const chunk of chunks) {
-          const templateData = {
-            1: "",             // dummy, placeholder 1
-            2: String(taskCount), // total pending tasks
-            3: chunk           // task list for this chunk
-          };
-
-          console.log(`📩 Sending to: ${employer.phone} (${taskCount} tasks), chunk length: ${chunk.length}`);
-
-          await client.messages.create({
-            from: "whatsapp:+14155238886",
-            to: `whatsapp:+${employer.phone}`,
-            contentSid: FLEXIBLE_TEMPLATE_SID,
-            contentVariables: JSON.stringify(templateData)
-          });
-        }
+        await client.messages.create({
+          from: process.env.TWILIO_PHONE_NUMBER, // your Twilio WhatsApp sender number
+          to: `whatsapp:+${employer.phone}`,
+          body: `Hey, you have ${pendingTasks.length} pending tasks today:\n${
+            taskList || "No tasks pending ✅"
+          }`,
+        });
       }
     } catch (err) {
       console.error("❌ Error fetching employer list:", err.message);
