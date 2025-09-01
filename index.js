@@ -4149,10 +4149,8 @@ async function getAllEmployerPhones() {
   return Object.values(employerMap);
 }
 
-const FLEXIBLE_TEMPLATE_SID = "HX1ed3bebefa158609f8b89ae44b5bd16b"; // your approved flexible template SID
-
 cron.schedule(
-  "* * * * *",
+  "0 */3 * * *",
   async () => {
     console.log("⏰ Running scheduled job...");
 
@@ -4168,36 +4166,27 @@ cron.schedule(
           continue;
         }
 
-        const pendingTasks = employer.tasks || [];
-        const taskCount = pendingTasks.length;
+        const pendingTasks = employer.tasks;
+        let taskList = "";
 
-        if (taskCount === 0) {
-          console.log(`🚫 No tasks for ${employer.phone}, skipping`);
-          continue;
+        if (pendingTasks.length > 0) {
+          taskList = pendingTasks
+            .map(
+              (task, index) =>
+                `${index + 1}. ${task.task_details || "Untitled Task"}`
+            )
+            .join("\n");
         }
 
-        // Build task list as one string
-        const taskList = pendingTasks
-          .map((task, index) => `📌 ${index + 1}. ${task.task_details || "Untitled Task"}`)
-          .join("\n");
+        console.log(`📩 Sending to: ${employer.phone}`);
 
-        // Fill template variables
-        const templateData = {
-          1: "",
-          2:  String(taskCount),
-          3: taskList,
-        };
-
-        console.log(`📩 Sending to: ${employer.phone} (${taskCount} tasks)`);
-
-        // Send WhatsApp template
-        await sendMessage(
-          `whatsapp:+${employer.phone}`,
-          null, // no free-form body
-          true, // isTemplate
-          templateData,
-          FLEXIBLE_TEMPLATE_SID
-        );
+        await client.messages.create({
+          from: process.env.TWILIO_PHONE_NUMBER, // your Twilio WhatsApp sender number
+          to: `whatsapp:+${employer.phone}`,
+          body: `Hey, you have ${pendingTasks.length} pending tasks today:\n${
+            taskList || "No tasks pending ✅"
+          }`,
+        });
       }
     } catch (err) {
       console.error("❌ Error fetching employer list:", err.message);
