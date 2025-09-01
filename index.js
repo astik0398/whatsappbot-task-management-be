@@ -1407,6 +1407,45 @@ async function makeTwilioRequest() {
       req.body.ListId
     );
 
+    if (buttonPayload === "see_summary") {
+  (async () => {
+    try {
+      const employerList = await getAllEmployerPhones();
+
+      // Extract the sender’s WhatsApp number (e.g., whatsapp:+918013356481)
+      const senderPhone = From.replace("whatsapp:+", ""); // assuming `From` comes from webhook
+
+      // Find the matching employer
+      const employer = employerList.find(e => e.phone === senderPhone);
+
+      if (!employer) {
+        console.log("❌ No employer found for this sender:", senderPhone);
+        return;
+      }
+
+      const pendingTasks = employer.tasks || [];
+      const taskList = pendingTasks
+        .map((task, index) => `📌 ${index + 1}. ${task.task_details || "Untitled Task"}`)
+        .join("\n");
+
+      console.log(`📩 Sending task summary to: ${senderPhone}`);
+
+      await client.messages.create({
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: `whatsapp:+${senderPhone}`,
+        body: `${
+          taskList || "No tasks pending ✅"
+        }`,
+      });
+
+    } catch (error) {
+      console.error("❌ Error fetching employer list:", error.message);
+    }
+  })();
+
+    return; // 👈 stops the fallback handler from running
+}
+
     if (req.body.ListId && req.body.ListId.startsWith("managetask_")) {
       // This block will run when ListId starts with "managetask_"
       const actualId = req.body.ListId.replace("managetask_", "");
@@ -4150,12 +4189,14 @@ async function getAllEmployerPhones() {
 }
 
 cron.schedule(
-  "0 */3 * * *",
+  "* * * * *",
   async () => {
     console.log("⏰ Running scheduled job...");
 
     try {
       const employerList = await getAllEmployerPhones();
+
+      console.log('employerList---', employerList);
 
       for (const employer of employerList) {
         if (
@@ -4167,26 +4208,34 @@ cron.schedule(
         }
 
         const pendingTasks = employer.tasks;
-        let taskList = "";
+
+              console.log('pendingTasks---', pendingTasks);
 
         if (pendingTasks.length > 0) {
-          taskList = pendingTasks
-            .map(
-              (task, index) =>
-                `${index + 1}. ${task.task_details || "Untitled Task"}`
-            )
-            .join("\n");
+         sendMessage(
+          `whatsapp:+${employer.phone}`,
+          null, // No body for template
+          true, // isTemplate flag
+          {
+            1: `${pendingTasks.length}`,
+          },
+          "HXe117bdf6d396967cc2a934de266cd438"
+        );
+        }
+        else{
+          sendMessage(
+          `whatsapp:+${employer.phone}`,
+          null, // No body for template
+          true, // isTemplate flag
+          {
+            1: `${pendingTasks.length}`,
+          },
+          "HX71dc8c036e0feb898e8cc53e41ba9544"
+        );
         }
 
         console.log(`📩 Sending to: ${employer.phone}`);
 
-        await client.messages.create({
-          from: process.env.TWILIO_PHONE_NUMBER, // your Twilio WhatsApp sender number
-          to: `whatsapp:+${employer.phone}`,
-          body: `Hey, you have ${pendingTasks.length} pending tasks today:\n${
-            taskList || "No tasks pending ✅"
-          }`,
-        });
       }
     } catch (err) {
       console.error("❌ Error fetching employer list:", err.message);
