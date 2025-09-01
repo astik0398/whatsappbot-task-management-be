@@ -4189,7 +4189,7 @@ async function getAllEmployerPhones() {
 }
 
 cron.schedule(
-  "* * * * *",
+  "0 */6 * * *",
   async () => {
     console.log("⏰ Running scheduled job...");
 
