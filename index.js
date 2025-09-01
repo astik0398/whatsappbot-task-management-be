@@ -4237,9 +4237,16 @@ cron.schedule(
         // fallback: use "10 tasks" template if > 10
 
         // build variables
-        const templateData = {
+      let templateData
+
+        if(pendingTasks.length <= 4){
+             templateData = {
           1: taskCount, // always the count
-        };
+        }
+        }
+        else{
+ templateData = {}
+        }
 
         pendingTasks.forEach((task, idx) => {
           templateData[idx + 2] = task.task_details || "Untitled Task";
