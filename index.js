@@ -56,6 +56,28 @@ let currentTime = "";
 
 const sessions = {};
 
+async function addGroupedTask({ name, phone, employerNumber, userId, tasks }) {
+  try {
+    const { data, error } = await supabase
+      .from('grouped_tasks')
+      .insert([
+        {
+          name,
+          phone,
+          employerNumber,
+          userId,
+          tasks // tasks should be a JS object or array; Supabase will store it as JSONB
+        }
+      ]);
+
+    if (error) throw error;
+    console.log('Inserted grouped task:', data);
+    return data;
+  } catch (err) {
+    console.error('❌ Failed to insert grouped task:', err.message);
+  }
+}
+
 function truncateString(str) {
   if (typeof str !== 'string') {
     return str;
@@ -1399,6 +1421,124 @@ async function makeTwilioRequest() {
     const mediaUrl = req.body.MediaUrl0;
     const mediaType = req.body.MediaContentType0;
     const numMedia = parseInt(req.body.NumMedia || "0");
+
+        if (mediaType === "text/vcard") {
+
+        let addedCount = 0;
+          let skippedCount = 0;
+
+      for (let i = 0; i < numMedia; i++) {
+  const mediaUrl = req.body[`MediaUrl${i}`];
+  const mediaType = req.body[`MediaContentType${i}`];
+
+  if (mediaType === "text/vcard") {
+    try {
+      const response = await axios.get(mediaUrl, {
+        auth: {
+          username: process.env.TWILIO_ACCOUNT_SID,
+          password: process.env.TWILIO_AUTH_TOKEN,
+        },
+        responseType: "text",
+      });
+
+      const vcardText = response.data;
+      console.log(`vcardText for Media ${i}:`, vcardText);
+
+      const nameMatch = vcardText.match(/^FN:(.+)$/m);
+      const fullName = nameMatch ? nameMatch[1].trim() : null;
+
+      const phoneMatch = vcardText.match(/^TEL.*:(.+)$/m);
+      const rawPhone = phoneMatch ? phoneMatch[1].trim() : null;
+      const phoneNumber = rawPhone ? rawPhone.replace(/\D/g, "") : null;
+
+      // console.log("contactInfo:", { name: fullName, phone: phoneNumber });
+
+      console.log('from----num', From);
+      console.log('phoneNumber----num', phoneNumber);
+
+            const { data, error } = await supabase
+  .from("user_details")
+  .select("userId")
+  .eq("phone", From)
+  .single();  // since phone should be unique
+
+if (error) {
+  console.error("Error fetching userId:", error);
+} else {
+  console.log("Found userId:", data.userId);
+}
+
+console.log('data,,,,,,,,,,,,,,,,', data);
+
+
+
+  const { data: existingUser, error: fetchError } = await supabase
+    .from("grouped_tasks")
+    .select("id")
+    .eq("phone", phoneNumber)
+    .eq("userId", data.userId)
+    .maybeSingle(); 
+
+    console.log('existingUser', existingUser);
+
+  if (fetchError) {
+    console.error("Error checking phone number:", fetchError.message);
+    continue;
+  }
+
+  if (existingUser) {
+
+    console.log("Phone number already exists in the database!");
+              skippedCount++; // ✅ mark skipped
+    continue;
+  }
+      const newTask = {
+        name: fullName.toUpperCase(),
+        phone: phoneNumber,
+        employerNumber: From,
+        userId: data.userId,
+        tasks: [ {
+        task_details: '',
+        task_done: '',
+        due_date: '',
+        reminder: '',
+        reminder_frequency: '',
+        reason: '',
+      }]
+      }
+
+addGroupedTask(newTask);
+ addedCount++;
+
+    } catch (err) {
+      console.error("❌ Failed to parse vCard:", err.message);
+    }
+  }
+}
+
+  // ✅ Build a final message based on results
+  let finalMsg = "";
+
+  if (addedCount === 1 && skippedCount === 0) {
+    finalMsg = "The contact has been added successfully ✅";
+  } else if (addedCount > 1 && skippedCount === 0) {
+    finalMsg = `All the ${addedCount} contacts have been added successfully ✅`;
+  } else if (addedCount === 0 && skippedCount > 0) {
+    finalMsg = `No new contacts were added. ${skippedCount} contact(s) already exist in your list ⚠️`;
+  } else if (addedCount > 0 && skippedCount > 0) {
+    finalMsg = `${addedCount} contact(s) have been added successfully ✅, and ${skippedCount} contact(s) were skipped because they already exist ⚠️`;
+  }
+
+    if (finalMsg) {
+    await client.messages.create({
+      from: process.env.TWILIO_PHONE_NUMBER, // your Twilio number
+      to: From,
+      body: finalMsg,
+    });
+  }
+
+  return
+}
 
     let userMessage = Body.trim();
 
@@ -4189,7 +4329,7 @@ async function getAllEmployerPhones() {
 }
 
 cron.schedule(
-  "0 */6 * * *",
+  "0 9 * * *",
   async () => {
     console.log("⏰ Running scheduled job...");
 
