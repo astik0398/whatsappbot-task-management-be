@@ -1508,6 +1508,10 @@ console.log('data,,,,,,,,,,,,,,,,', data);
       }
 
 addGroupedTask(newTask);
+
+// 🔹 Trigger the refresh API
+await axios.get("https://whatsappbot-task-management-be-production.up.railway.app/refresh"); 
+
  addedCount++;
 
     } catch (err) {
