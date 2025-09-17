@@ -251,6 +251,26 @@ async function handleUserInput(userMessage, From, startTaskAssignment) {
 
   assignerMap.push(From);
 
+   // NEW: Check for first-time user (no assignees in grouped_tasks for this employerNumber)
+  const { count, error: countError } = await supabase
+    .from('grouped_tasks')
+    .select('id', { count: 'exact', head: true })
+    .eq('employerNumber', From);
+
+  if (countError) {
+    console.error('Error checking for first-time user:', countError);
+    sendMessage(From, 'Sorry, there was an error. Please try again.');
+    return;
+  }
+
+  if (count === 0) {
+    console.log('inside count === 0');
+    
+    // First-time user: Send welcome message and enter adding_contacts mode
+    sendMessage(From, 'Welcome to Soma AI! Before we get started, please add all the contacts you’d like to assign tasks to');
+    return;
+  }
+
   if (session.step === 5) {
     if (userMessage.toLowerCase() === "yes") {
       const taskId = session.taskId; // Now using taskId instead of task name
