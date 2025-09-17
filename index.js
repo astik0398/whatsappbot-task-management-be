@@ -1542,24 +1542,39 @@ await axios.get("https://whatsappbot-task-management-be-production.up.railway.ap
 
   // ✅ Build a final message based on results
   let finalMsg = "";
+  let contentSid = "";
+  let contentVariables = "{}"; // Default empty JSON string
 
   if (addedCount === 1 && skippedCount === 0) {
-    finalMsg = "The contact has been added successfully ✅";
+
+    contentSid = "HX9fc409a623863208bb7779997113dc02"; // Replace with actual SID
+
   } else if (addedCount > 1 && skippedCount === 0) {
-    finalMsg = `All the ${addedCount} contacts have been added successfully ✅`;
+    
+  contentSid = "HXbb140286de1bc37345a4e3f7e03cbedf"; // Replace with actual SID
+  contentVariables = JSON.stringify({ 1: addedCount });
+
   } else if (addedCount === 0 && skippedCount > 0) {
-    finalMsg = `No new contacts were added. ${skippedCount} contact(s) already exist in your list ⚠️`;
+
+  contentSid = "HX6fcf414ddc88c0e075f9c9597f5972b3"; // Replace with actual SID
+  contentVariables = JSON.stringify({ 1: skippedCount });
+
   } else if (addedCount > 0 && skippedCount > 0) {
-    finalMsg = `${addedCount} contact(s) have been added successfully ✅, and ${skippedCount} contact(s) were skipped because they already exist ⚠️`;
+
+  contentSid = "HXf7372ffb49cf3b88ce568ada2f8db7da"; // Replace with actual SID
+  contentVariables = JSON.stringify({ 1: addedCount, 2: skippedCount });
+
   }
 
-    if (finalMsg) {
-    await client.messages.create({
-      from: process.env.TWILIO_PHONE_NUMBER, // your Twilio number
-      to: From,
-      body: finalMsg,
-    });
-  }
+ if (contentSid) {
+  await client.messages.create({
+    from: process.env.TWILIO_PHONE_NUMBER, // e.g., whatsapp:+14155238886
+    to: From, // Assuming From is a phone number like +1234567890
+    contentSid: contentSid,
+    contentVariables: contentVariables,
+    // Optional: messagingServiceSid: "MG..." if using a Messaging Service
+  });
+}
 
   return
 }
