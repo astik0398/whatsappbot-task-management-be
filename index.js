@@ -1561,7 +1561,7 @@ await axios.get("https://whatsappbot-task-management-be-production.up.railway.ap
 
   } else if (addedCount > 0 && skippedCount > 0) {
 
-  contentSid = "HXf7372ffb49cf3b88ce568ada2f8db7da"; // Replace with actual SID
+  contentSid = "HX192d5253c806b879cf8961681a9f5fd3"; // Replace with actual SID
   contentVariables = JSON.stringify({ 1: addedCount, 2: skippedCount });
 
   }
